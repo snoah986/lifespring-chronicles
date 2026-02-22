@@ -9,13 +9,33 @@ export const SchoolPanel: React.FC = () => {
   const { state } = useGameState();
   const { character, countryConfig } = state;
 
-  if (!character || !countryConfig) return null;
+  // Handle case when game hasn't started
+  if (!character || !countryConfig) {
+    return (
+      <div className="space-y-4">
+        <Card className="bg-zinc-900 border-zinc-700">
+          <CardHeader>
+            <CardTitle className="text-zinc-100 flex items-center gap-2">
+              <School className="h-5 w-5" />
+              Education
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-zinc-400 italic">
+              Start a new game to view education details.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const currentStage = getCurrentSchoolStage(character.age, countryConfig);
   const upcomingExam = getExamAtAge(character.age, countryConfig);
   const nextStage = getCurrentSchoolStage(character.age + 1, countryConfig);
 
-  const academicPerformance = character.stats.intelligence * 5 + (character.academicPerformance || 0);
+  // Safe calculation with fallbacks
+  const academicPerformance = (character.stats?.intelligence || 0) * 5 + (character.academicPerformance || 0);
 
   return (
     <div className="space-y-4">
@@ -27,6 +47,7 @@ export const SchoolPanel: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Current Stage */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-zinc-400">Current Stage</span>
@@ -39,6 +60,7 @@ export const SchoolPanel: React.FC = () => {
             )}
           </div>
 
+          {/* Academic Performance */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-zinc-400">Academic Performance</span>
@@ -47,6 +69,7 @@ export const SchoolPanel: React.FC = () => {
             <Progress value={academicPerformance} className="h-2 bg-zinc-800" />
           </div>
 
+          {/* Upcoming Exams */}
           {upcomingExam && (
             <div className="mt-4 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
               <div className="flex items-center gap-2 mb-2">
@@ -63,6 +86,7 @@ export const SchoolPanel: React.FC = () => {
             </div>
           )}
 
+          {/* Next Stage Preview */}
           {nextStage && nextStage.name !== currentStage?.name && (
             <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg border border-dashed border-zinc-700">
               <div className="text-xs text-zinc-400">Next Stage (Age {currentStage?.endAge + 1})</div>
