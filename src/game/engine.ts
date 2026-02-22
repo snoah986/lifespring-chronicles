@@ -1,4 +1,6 @@
 import { GameState, NPC, GameEvent, ActiveEvent, ChronicleEntry, EventChoice, getLifeStage, Interaction } from './types';
+import { checkReappearance } from './reappearance';
+import { generateDeepAdolescenceEvents } from './events-adolescence';
 
 let nextId = 1;
 function uid(): string {
@@ -511,21 +513,34 @@ function generateLateLifeEvents(state: GameState): GameEvent[] {
   return events;
 }
 
-function getEventsForAge(state: GameState): GameEvent[] {
+function getEventsForAge(state: GameState): { events: GameEvent[]; newNPCs: Map<string, NPC> } {
   const stage = getLifeStage(state.currentAge);
   let events: GameEvent[] = [];
+  let allNewNPCs = new Map<string, NPC>();
 
   switch (stage) {
     case 'childhood': events = generateChildhoodEvents(state); break;
-    case 'adolescence': events = generateAdolescenceEvents(state); break;
-    case 'young_adult': events = generateYoungAdultEvents(state); break;
+    case 'adolescence': {
+      events = generateAdolescenceEvents(state);
+      const deep = generateDeepAdolescenceEvents(state);
+      events = [...events, ...deep.events];
+      deep.newNPCs.forEach((npc, id) => allNewNPCs.set(id, npc));
+      break;
+    }
+    case 'young_adult': {
+      events = generateYoungAdultEvents(state);
+      const deep = generateDeepAdolescenceEvents(state);
+      events = [...events, ...deep.events];
+      deep.newNPCs.forEach((npc, id) => allNewNPCs.set(id, npc));
+      break;
+    }
     case 'adult': events = generateAdultEvents(state); break;
     case 'mid_life': events = generateMidLifeEvents(state); break;
     case 'elder': events = generateElderEvents(state); break;
     case 'late_life': events = generateLateLifeEvents(state); break;
   }
 
-  return events.filter(e => state.currentAge >= e.minAge && state.currentAge <= e.maxAge);
+  return { events: events.filter(e => state.currentAge >= e.minAge && state.currentAge <= e.maxAge), newNPCs: allNewNPCs };
 }
 
 function checkDeath(state: GameState): boolean {
@@ -536,16 +551,25 @@ function checkDeath(state: GameState): boolean {
 }
 
 export function selectEventForAge(state: GameState): GameState {
-  const events = getEventsForAge(state);
+  const { events, newNPCs } = getEventsForAge(state);
   if (events.length === 0) return state;
 
   const event = events[Math.floor(Math.random() * events.length)];
   
-  // If event has a new NPC, add them
-  const newNPC = (event as any)._newNPC as NPC | undefined;
-  let npcs = state.npcs;
-  if (newNPC && !npcs.find(n => n.id === newNPC.id)) {
-    npcs = [...npcs, newNPC];
+  // Add any new NPCs from events
+  let npcs = [...state.npcs];
+  const legacyNPC = (event as any)._newNPC as NPC | undefined;
+  if (legacyNPC && !npcs.find(n => n.id === legacyNPC.id)) {
+    npcs = [...npcs, legacyNPC];
+  }
+  // Add new NPCs from deep events that are involved in this event
+  const involvedIds = event.choices
+    .filter(c => c.npcInteraction)
+    .map(c => c.npcInteraction!.npcId);
+  for (const id of involvedIds) {
+    if (newNPCs.has(id) && !npcs.find(n => n.id === id)) {
+      npcs = [...npcs, newNPCs.get(id)!];
+    }
   }
 
   return {
@@ -553,9 +577,7 @@ export function selectEventForAge(state: GameState): GameState {
     npcs,
     currentEvent: {
       event,
-      involvedNPCs: event.choices
-        .filter(c => c.npcInteraction)
-        .map(c => c.npcInteraction!.npcId),
+      involvedNPCs: involvedIds,
     },
   };
 }
@@ -627,6 +649,20 @@ export function advanceYear(state: GameState): GameState {
       ...newState,
       phase: 'dead',
       chronicle: [...newState.chronicle, deathEntry],
+    };
+  }
+
+  // Check for reappearance events first
+  const reappearanceEvent = checkReappearance(newState);
+  if (reappearanceEvent) {
+    return {
+      ...newState,
+      currentEvent: {
+        event: reappearanceEvent,
+        involvedNPCs: reappearanceEvent.choices
+          .filter(c => c.npcInteraction)
+          .map(c => c.npcInteraction!.npcId),
+      },
     };
   }
 
