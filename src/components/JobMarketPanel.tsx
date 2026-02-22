@@ -1,182 +1,238 @@
-import { useState } from 'react';
-import type { GameState } from '@/game/types';
-import { getCountry, getEligibleJobs, formatSalary, JobTier } from '@/game/countries';
+import React, { useState } from 'react';
+import { useGameState } from '@/hooks/useGameState';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Briefcase, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
 
-interface JobMarketPanelProps {
-  state: GameState;
-  onApply: (tierIndex: number, titleIndex: number) => void;
-  onQuit: () => void;
+interface Job {
+  id: string;
+  title: string;
+  tier: 'entry' | 'mid' | 'senior';
+  salary: number;
+  requirements: {
+    intelligence?: number;
+    reputation?: number;
+  };
+  description: string;
 }
 
-const JobMarketPanel = ({ state, onApply, onQuit }: JobMarketPanelProps) => {
-  const [selectedTier, setSelectedTier] = useState<number | null>(null);
-  const [selectedTitle, setSelectedTitle] = useState<number>(0);
-  const [applying, setApplying] = useState(false);
+export const JobMarketPanel: React.FC = () => {
+  const { state, dispatch } = useGameState();
+  const { character, countryConfig } = state;
+  const [applyingFor, setApplyingFor] = useState<string | null>(null);
 
-  const config = getCountry(state.country);
-  const eligibleJobs = getEligibleJobs(
-    config,
-    state.currentAge,
-    state.academicIntelligence,
-    state.stats.reputation,
-    state.universityLocked
-  );
+  if (!character || !countryConfig) return null;
 
-  const tooYoung = state.currentAge < config.minimumWorkingAge;
+  // Generate available jobs based on character age and stats
+  const availableJobs: Job[] = [
+    {
+      id: 'retail',
+      title: 'Retail Assistant',
+      tier: 'entry',
+      salary: 18000,
+      requirements: {},
+      description: 'Entry-level customer service position.'
+    },
+    {
+      id: 'office',
+      title: 'Office Administrator',
+      tier: 'entry',
+      salary: 22000,
+      requirements: { intelligence: 5 },
+      description: 'General office duties and admin work.'
+    },
+    {
+      id: 'trades',
+      title: 'Apprentice Tradesperson',
+      tier: 'entry',
+      salary: 20000,
+      requirements: {},
+      description: 'Learn a skilled trade on the job.'
+    },
+    {
+      id: 'corporate',
+      title: 'Junior Analyst',
+      tier: 'mid',
+      salary: 35000,
+      requirements: { intelligence: 8, reputation: 5 },
+      description: 'Corporate office role requiring qualifications.'
+    },
+    {
+      id: 'manager',
+      title: 'Department Manager',
+      tier: 'mid',
+      salary: 45000,
+      requirements: { intelligence: 7, reputation: 7 },
+      description: 'Manage a team and oversee operations.'
+    },
+    {
+      id: 'executive',
+      title: 'Senior Executive',
+      tier: 'senior',
+      salary: 80000,
+      requirements: { intelligence: 12, reputation: 10 },
+      description: 'High-level strategic leadership role.'
+    }
+  ];
 
-  const handleApply = () => {
-    if (selectedTier === null) return;
-    setApplying(true);
-    setTimeout(() => {
-      onApply(selectedTier, selectedTitle);
-      setApplying(false);
-      setSelectedTier(null);
-    }, 300);
+  const calculateSuccessChance = (job: Job): number => {
+    if (!job.requirements.intelligence && !job.requirements.reputation) return 90;
+    
+    let score = 50;
+    if (job.requirements.intelligence) {
+      const diff = character.stats.intelligence - job.requirements.intelligence;
+      score += diff * 10;
+    }
+    if (job.requirements.reputation) {
+      const diff = character.stats.reputation - job.requirements.reputation;
+      score += diff * 5;
+    }
+    
+    // Academic performance bonus
+    score += (character.academicPerformance || 0) * 0.2;
+    
+    return Math.min(95, Math.max(10, score));
   };
 
-  if (tooYoung) {
+  const handleApply = (job: Job) => {
+    setApplyingFor(job.id);
+    const chance = calculateSuccessChance(job);
+    const roll = Math.random() * 100;
+    
+    setTimeout(() => {
+      if (roll <= chance) {
+        dispatch({
+          type: 'SET_JOB',
+          payload: {
+            title: job.title,
+            salary: job.salary,
+            tier: job.tier
+          }
+        });
+      }
+      setApplyingFor(null);
+    }, 500);
+  };
+
+  const handleQuit = () => {
+    dispatch({ type: 'QUIT_JOB' });
+  };
+
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case 'entry': return 'bg-green-600';
+      case 'mid': return 'bg-blue-600';
+      case 'senior': return 'bg-purple-600';
+      default: return 'bg-gray-600';
+    }
+  };
+
+  if (character.job) {
     return (
-      <div className="p-4">
-        <div className="panel-header -mx-4 px-4 mb-4">{config.jobMarketLabel}</div>
-        <div className="border border-border rounded p-4 text-center">
-          <p className="font-mono text-xs text-muted-foreground">
-            You must be at least {config.minimumWorkingAge} to enter the job market.
-          </p>
-          <p className="font-mono text-[10px] text-muted-foreground mt-2">
-            Focus on school for now.
-          </p>
-        </div>
+      <div className="space-y-4">
+        <Card className="bg-zinc-900 border-zinc-700">
+          <CardHeader>
+            <CardTitle className="text-zinc-100 flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Current Employment
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-lg font-medium text-zinc-100">{character.job.title}</div>
+                <Badge className={`${getTierColor(character.job.tier)} mt-1`}>
+                  {character.job.tier.toUpperCase()}
+                </Badge>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-1 text-green-400">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="text-lg font-bold">{character.job.salary.toLocaleString()}</span>
+                </div>
+                <div className="text-xs text-zinc-500">per year</div>
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t border-zinc-700">
+              <Button 
+                variant="destructive" 
+                onClick={handleQuit}
+                className="w-full"
+              >
+                Quit Job
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="panel-header -mx-4 px-4">{config.jobMarketLabel}</div>
-
-      {/* Current employment status */}
-      <div className="border border-border rounded p-3">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Current Status</div>
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="font-mono text-sm text-foreground">{state.careerTitle}</div>
-            {state.isEmployed && state.annualSalary > 0 && (
-              <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                {formatSalary(config, state.annualSalary / config.salaryMultiplier)} per year
-              </div>
-            )}
-          </div>
-          <div className={`font-mono text-[10px] px-2 py-1 rounded ${state.isEmployed ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-            {state.isEmployed ? 'Employed' : 'Unemployed'}
-          </div>
-        </div>
-        {state.isEmployed && (
-          <button
-            onClick={onQuit}
-            className="mt-3 w-full border border-red-900/50 text-red-400 font-mono text-[10px] uppercase tracking-wider py-1.5 rounded hover:bg-red-900/20 transition-colors"
-          >
-            Quit Job
-          </button>
-        )}
-      </div>
-
-      {/* Job listings */}
-      <div>
-        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Available Positions</div>
-
-        {config.jobTiers.map((tier, tierIdx) => {
-          const isEligible = eligibleJobs.some(j => j.tier === tier.tier);
-          const isSelected = selectedTier === tierIdx;
-
-          return (
-            <div
-              key={tier.tier}
-              className={`mb-2 border rounded transition-all ${
-                isSelected
-                  ? 'border-amber-500/60 bg-amber-500/5'
-                  : isEligible
-                  ? 'border-border hover:border-muted-foreground cursor-pointer'
-                  : 'border-border/40 opacity-50 cursor-not-allowed'
-              }`}
-              onClick={() => isEligible && setSelectedTier(isSelected ? null : tierIdx)}
-            >
-              <div className="p-3">
-                <div className="flex justify-between items-start mb-1">
-                  <span className={`font-mono text-xs ${isEligible ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {tier.label}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    Tier {tier.tier}
-                  </span>
+    <div className="space-y-4">
+      <Card className="bg-zinc-900 border-zinc-700">
+        <CardHeader>
+          <CardTitle className="text-zinc-100 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Job Market
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {availableJobs.map((job) => {
+            const chance = calculateSuccessChance(job);
+            const meetsReqs = chance >= 50;
+            
+            return (
+              <div 
+                key={job.id} 
+                className="p-3 bg-zinc-800 rounded-lg border border-zinc-700 space-y-2"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-medium text-zinc-100">{job.title}</div>
+                    <div className="text-xs text-zinc-400">{job.description}</div>
+                  </div>
+                  <Badge className={`${getTierColor(job.tier)} text-xs`}>
+                    {job.tier}
+                  </Badge>
                 </div>
-                <div className="font-mono text-[10px] text-muted-foreground mb-2">
-                  From {formatSalary(config, tier.baseSalary)}/yr
+                
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1 text-green-400">
+                    <DollarSign className="h-3 w-3" />
+                    <span>{job.salary.toLocaleString()}</span>
+                  </div>
+                  <div className="text-zinc-500">|</div>
+                  <div className="text-zinc-400">
+                    Success: {Math.round(chance)}%
+                  </div>
                 </div>
 
-                {/* Requirements */}
-                <div className="flex flex-wrap gap-1">
-                  {tier.requiresUniversity && (
-                    <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded ${!state.universityLocked ? 'bg-blue-900/30 text-blue-400' : 'bg-red-900/30 text-red-400'}`}>
-                      Degree required
+                {job.requirements.intelligence && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <AlertCircle className="h-3 w-3 text-zinc-500" />
+                    <span className={character.stats.intelligence >= job.requirements.intelligence ? 'text-green-400' : 'text-red-400'}>
+                      INT {job.requirements.intelligence}+ 
+                      ({character.stats.intelligence >= job.requirements.intelligence ? '✓' : '✗'})
                     </span>
-                  )}
-                  {tier.minAcademic > 0 && (
-                    <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded ${state.academicIntelligence >= tier.minAcademic ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      Academic {tier.minAcademic}+
-                    </span>
-                  )}
-                  {tier.minReputation > 0 && (
-                    <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded ${state.stats.reputation >= tier.minReputation ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      Rep {tier.minReputation}+
-                    </span>
-                  )}
-                  <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded ${state.currentAge >= tier.minAge ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                    Age {tier.minAge}+
-                  </span>
-                </div>
-
-                {/* Title selector when this tier is selected */}
-                {isSelected && isEligible && (
-                  <div className="mt-3 space-y-1">
-                    <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Select Position</div>
-                    {tier.titles.map((title, tIdx) => (
-                      <div
-                        key={tIdx}
-                        onClick={e => { e.stopPropagation(); setSelectedTitle(tIdx); }}
-                        className={`px-2 py-1.5 rounded cursor-pointer font-mono text-xs transition-colors ${
-                          selectedTitle === tIdx
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                            : 'bg-background text-foreground hover:bg-muted/50 border border-transparent'
-                        }`}
-                      >
-                        {title}
-                      </div>
-                    ))}
                   </div>
                 )}
+
+                <Button 
+                  onClick={() => handleApply(job)}
+                  disabled={applyingFor === job.id || !meetsReqs}
+                  className="w-full mt-2"
+                  variant={meetsReqs ? "default" : "secondary"}
+                >
+                  {applyingFor === job.id ? 'Applying...' : meetsReqs ? 'Apply' : 'Requirements Not Met'}
+                </Button>
               </div>
-            </div>
-          );
-        })}
-
-        {eligibleJobs.length === 0 && (
-          <div className="border border-border rounded p-4 text-center">
-            <p className="font-mono text-xs text-muted-foreground">No positions available yet.</p>
-            <p className="font-mono text-[10px] text-muted-foreground mt-1">Improve your academics or reputation to unlock listings.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Apply button */}
-      {selectedTier !== null && (
-        <button
-          onClick={handleApply}
-          disabled={applying}
-          className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-black font-mono text-xs uppercase tracking-widest py-2.5 rounded transition-colors"
-        >
-          {applying ? 'Submitting...' : `Apply for ${config.jobTiers[selectedTier]?.titles[selectedTitle] ?? 'Position'}`}
-        </button>
-      )}
+            );
+          })}
+        </CardContent>
+      </Card>
     </div>
   );
 };
