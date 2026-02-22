@@ -62,48 +62,44 @@ const InteractionEntry = ({ interaction }: { interaction: Interaction }) => (
   </div>
 );
 
-const NPCDetailModal = ({ npc, open, onClose, birthYear }: { npc: NPC; open: boolean; onClose: () => void; birthYear: number }) => {
-  const npcAge = birthYear + (new Date().getFullYear() - birthYear) - npc.birthYear;
-  
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-card border-border text-foreground max-w-md max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-mono text-sm uppercase tracking-widest text-foreground flex items-center gap-3">
-            {npc.name}
-            <span className="npc-tag">{npc.relationship}</span>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-3 mt-2">
-          <div className="flex gap-4 text-xs font-mono text-muted-foreground">
-            <span>Born: {npc.birthYear}</span>
-            <span>Met at age: {npc.metAtAge}</span>
-            <span>{npc.alive ? 'Alive' : 'Deceased'}</span>
-          </div>
+const NPCDetailModal = ({ npc, open, onClose, birthYear }: { npc: NPC; open: boolean; onClose: () => void; birthYear: number }) => (
+  <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <DialogContent className="bg-card border-border text-foreground max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="font-mono text-sm uppercase tracking-widest text-foreground flex items-center gap-3">
+          {npc.name}
+          <span className="npc-tag">{npc.relationship}</span>
+        </DialogTitle>
+      </DialogHeader>
 
-          <div className="panel-header -mx-6 px-6">
-            Interaction History ({npc.interactions.length})
-          </div>
-
-          {npc.interactions.length === 0 ? (
-            <p className="text-xs text-muted-foreground font-mono py-2">No significant interactions recorded.</p>
-          ) : (
-            <div className="space-y-0">
-              {npc.interactions.map((interaction, idx) => (
-                <InteractionEntry key={idx} interaction={interaction} />
-              ))}
-            </div>
-          )}
+      <div className="space-y-3 mt-2">
+        <div className="flex gap-4 text-xs font-mono text-muted-foreground">
+          <span>Born: {npc.birthYear}</span>
+          <span>Met at age: {npc.metAtAge}</span>
+          <span>{npc.alive ? 'Alive' : 'Deceased'}</span>
         </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
+
+        <div className="panel-header -mx-6 px-6">
+          Interaction History ({npc.interactions.length})
+        </div>
+
+        {npc.interactions.length === 0 ? (
+          <p className="text-xs text-muted-foreground font-mono py-2">No significant interactions recorded.</p>
+        ) : (
+          <div className="space-y-0">
+            {npc.interactions.map((interaction, idx) => (
+              <InteractionEntry key={idx} interaction={interaction} />
+            ))}
+          </div>
+        )}
+      </div>
+    </DialogContent>
+  </Dialog>
+);
 
 const NPCEntry = ({ npc, onClick }: { npc: NPC; onClick: () => void }) => {
-  const lastInteraction = npc.interactions.length > 0 
-    ? npc.interactions[npc.interactions.length - 1] 
+  const lastInteraction = npc.interactions.length > 0
+    ? npc.interactions[npc.interactions.length - 1]
     : null;
 
   return (
@@ -129,7 +125,7 @@ const StatsPanel = ({ state }: StatsPanelProps) => {
 
   return (
     <div className="bg-card border-r border-border overflow-y-auto">
-      {/* Stats */}
+      {/* Core Stats */}
       <div className="panel-header">Character Stats</div>
       <div className="p-3">
         <StatBar label="Health" value={state.stats.health} color="hsl(var(--stat-health))" />
@@ -137,6 +133,50 @@ const StatsPanel = ({ state }: StatsPanelProps) => {
         <StatBar label="Money" value={state.stats.money} color="hsl(var(--stat-money))" />
         <StatBar label="Reputation" value={state.stats.reputation} color="hsl(var(--stat-reputation))" />
       </div>
+
+      {/* Career Info */}
+      <div className="panel-header">Career</div>
+      <div className="p-3">
+        <div className="flex justify-between items-center mb-2">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Title</span>
+          <span className="font-mono text-xs text-foreground">{state.careerTitle}</span>
+        </div>
+        {state.annualSalary > 0 && (
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Annual Salary</span>
+            <span className="font-mono text-xs" style={{ color: 'hsl(var(--stat-money))' }}>
+              £{(state.annualSalary * 1000).toLocaleString()}
+            </span>
+          </div>
+        )}
+        {state.universityLocked && (
+          <div className="mt-1">
+            <span className="font-mono text-[10px] text-red-400 uppercase tracking-wider">University path closed</span>
+          </div>
+        )}
+      </div>
+
+      {/* Criminal Path Stats */}
+      {state.criminalPath && (
+        <>
+          <div className="panel-header" style={{ color: 'hsl(var(--event-negative))' }}>Street</div>
+          <div className="p-3">
+            <StatBar label="Street Rep" value={state.streetReputation} color="hsl(var(--event-negative))" />
+            <StatBar label="Police Heat" value={state.policeHeat} color="#f97316" />
+          </div>
+        </>
+      )}
+
+      {/* Political Path Stats */}
+      {state.politicalPath && (
+        <>
+          <div className="panel-header" style={{ color: '#60a5fa' }}>Politics</div>
+          <div className="p-3">
+            <StatBar label="Approval" value={state.approvalRating} color="#60a5fa" />
+            <StatBar label="Coalition" value={state.coalitionStability} color="#a78bfa" />
+          </div>
+        </>
+      )}
 
       {/* NPCs */}
       <div className="panel-header">
@@ -148,7 +188,6 @@ const StatsPanel = ({ state }: StatsPanelProps) => {
         ))}
       </div>
 
-      {/* NPC Detail Modal */}
       {selectedNPC && (
         <NPCDetailModal
           npc={selectedNPC}
