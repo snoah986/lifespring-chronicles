@@ -2,95 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 8%;
+    --foreground: 210 15% 82%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 18% 11%;
+    --card-foreground: 210 15% 82%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 18% 13%;
+    --popover-foreground: 210 15% 82%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 142 40% 45%;
+    --primary-foreground: 220 20% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 210 15% 72%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 14%;
+    --muted-foreground: 215 10% 48%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 38 70% 50%;
+    --accent-foreground: 220 20% 8%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 142 40% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.375rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Game-specific tokens */
+    --stat-health: 142 50% 45%;
+    --stat-happiness: 45 80% 55%;
+    --stat-money: 142 40% 45%;
+    --stat-reputation: 210 60% 55%;
+    --stat-danger: 0 65% 50%;
+    
+    --panel-header: 220 18% 14%;
+    --panel-border: 220 15% 20%;
+    --chronicle-bg: 220 20% 6%;
+    
+    --event-positive: 142 50% 40%;
+    --event-negative: 0 60% 50%;
+    --event-neutral: 210 15% 55%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 210 15% 82%;
+    --sidebar-primary: 142 40% 45%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 15% 16%;
+    --sidebar-accent-foreground: 210 15% 82%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 142 40% 45%;
   }
 }
 
@@ -100,6 +68,103 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-card border border-border rounded-sm;
+  }
+  
+  .panel-header {
+    @apply px-3 py-2 border-b border-border font-mono text-xs uppercase tracking-widest text-muted-foreground;
+    background: hsl(var(--panel-header));
+  }
+  
+  .stat-bar {
+    @apply h-1.5 rounded-full transition-all duration-500;
+  }
+  
+  .stat-bar-track {
+    @apply h-1.5 rounded-full w-full;
+    background: hsl(var(--muted));
+  }
+  
+  .chronicle-entry {
+    @apply py-1.5 px-3 text-xs font-mono border-l-2 border-transparent;
+  }
+  
+  .chronicle-entry.positive {
+    border-color: hsl(var(--event-positive));
+  }
+  
+  .chronicle-entry.negative {
+    border-color: hsl(var(--event-negative));
+  }
+  
+  .chronicle-entry.neutral {
+    border-color: hsl(var(--event-neutral));
+  }
+
+  .choice-btn {
+    @apply w-full text-left px-4 py-3 rounded-sm border border-border 
+           bg-secondary text-secondary-foreground 
+           hover:border-primary hover:bg-muted 
+           transition-all duration-200 text-sm;
+  }
+  
+  .choice-btn:hover {
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.15);
+  }
+
+  .age-badge {
+    @apply font-mono text-2xl font-bold;
+    color: hsl(var(--primary));
+  }
+
+  .life-stage-label {
+    @apply font-mono text-[10px] uppercase tracking-[0.2em] px-2 py-0.5 rounded-sm;
+    background: hsl(var(--primary) / 0.15);
+    color: hsl(var(--primary));
+  }
+
+  .next-year-btn {
+    @apply px-6 py-2 font-mono text-xs uppercase tracking-widest rounded-sm
+           border border-primary text-primary 
+           hover:bg-primary hover:text-primary-foreground
+           transition-all duration-200;
+  }
+
+  .next-year-btn:hover {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .npc-tag {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-mono uppercase tracking-wider;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .start-screen {
+    @apply min-h-screen flex items-center justify-center;
+    background: radial-gradient(ellipse at center, hsl(var(--card)) 0%, hsl(var(--background)) 70%);
+  }
+
+  .start-title {
+    @apply font-mono text-5xl font-bold tracking-[0.3em] uppercase;
+    color: hsl(var(--primary));
+    text-shadow: 0 0 40px hsl(var(--primary) / 0.3);
+  }
+
+  .game-grid {
+    @apply grid h-screen;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: auto 1fr 200px;
   }
 }
