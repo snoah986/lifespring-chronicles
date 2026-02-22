@@ -1,0 +1,11 @@
+name: fix
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mv src/components/J*.tsx src/components/game/ 2>/dev/null || true
+      - run: mv src/components/S*.tsx src/components/game/ 2>/dev/null || true  
+      - run: git config user.email "a@a.com" && git config user.name "a"
+      - run: git add . && git commit -m "fix" && git push
