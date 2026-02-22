@@ -1,34 +1,29 @@
-export type LifeStage = 
-  | 'childhood' 
-  | 'adolescence' 
-  | 'young_adult' 
-  | 'adult' 
-  | 'mid_life' 
-  | 'elder' 
+import { CountryCode } from './countries';
+
+export type LifeStage =
+  | 'childhood'
+  | 'adolescence'
+  | 'young_adult'
+  | 'adult'
+  | 'mid_life'
+  | 'elder'
   | 'late_life';
 
-export type RelationshipType = 
-  | 'family' 
-  | 'classmate' 
-  | 'friend' 
-  | 'rival' 
-  | 'colleague' 
-  | 'romantic' 
-  | 'teacher' 
-  | 'mentor' 
-  | 'neighbor'
-  | 'criminal_contact'
-  | 'political_ally'
-  | 'political_rival';
+export type RelationshipType =
+  | 'family' | 'classmate' | 'friend' | 'rival' | 'colleague'
+  | 'romantic' | 'teacher' | 'mentor' | 'neighbor'
+  | 'criminal_contact' | 'political_ally' | 'political_rival';
 
 export type EmotionalValence = 'positive' | 'negative' | 'neutral';
-export type InteractionDomain = 'professional' | 'social' | 'romantic' | 'financial' | 'family' | 'academic' | 'criminal' | 'political';
+export type InteractionDomain =
+  | 'professional' | 'social' | 'romantic' | 'financial'
+  | 'family' | 'academic' | 'criminal' | 'political';
 
 export interface Interaction {
   playerAge: number;
   type: string;
   valence: EmotionalValence;
-  severity: number; // 1-10
+  severity: number;
   domain: InteractionDomain;
   description: string;
 }
@@ -44,11 +39,11 @@ export interface NPC {
 }
 
 export interface PlayerStats {
-  health: number;       // 0-100
-  happiness: number;    // 0-100
-  money: number;        // 0-100
-  reputation: number;   // 0-100
-  karma: number;        // hidden, -100 to 100
+  health: number;
+  happiness: number;
+  money: number;
+  reputation: number;
+  karma: number;
 }
 
 export interface ChronicleEntry {
@@ -65,7 +60,7 @@ export interface GameEvent {
   maxAge: number;
   stage: LifeStage[];
   choices: EventChoice[];
-  isMandatory?: boolean; // mandatory events fire before random ones
+  isMandatory?: boolean;
 }
 
 export interface EventChoice {
@@ -98,29 +93,47 @@ export interface ActiveEvent {
   involvedNPCs: string[];
 }
 
+export interface JobApplication {
+  tierIndex: number;
+  titleIndex: number;
+  appliedAtAge: number;
+}
+
 export interface GameState {
   phase: 'start' | 'playing' | 'dead';
   playerName: string;
   birthYear: number;
   currentAge: number;
+  country: CountryCode;
   stats: PlayerStats;
   npcs: NPC[];
   chronicle: ChronicleEntry[];
   currentEvent: ActiveEvent | null;
+
+  // Career & employment
   career: string;
   careerTitle: string;
   annualSalary: number;
+  isEmployed: boolean;
+
+  // Education gates
   universityLocked: boolean;
   careerPathChosen: boolean;
+  examsTaken: number[];
+
+  // Niche paths
   criminalPath: boolean;
   politicalPath: boolean;
+
   // Hidden stats
-  academicIntelligence: number; // 0-100
-  streetReputation: number;     // 0-100
-  policeHeat: number;           // 0-100
-  approvalRating: number;       // 0-100 (political path)
-  coalitionStability: number;   // 0-100 (political path)
-  examsTaken: number[];         // ages at which exams have already fired
+  academicIntelligence: number;
+  streetReputation: number;
+  policeHeat: number;
+  approvalRating: number;
+  coalitionStability: number;
+
+  // UI state
+  activeTab: 'life' | 'jobs' | 'school';
 }
 
 export function getLifeStage(age: number): LifeStage {
@@ -135,13 +148,8 @@ export function getLifeStage(age: number): LifeStage {
 
 export function getLifeStageLabel(stage: LifeStage): string {
   const labels: Record<LifeStage, string> = {
-    childhood: 'Childhood',
-    adolescence: 'Adolescence',
-    young_adult: 'Young Adult',
-    adult: 'Adult',
-    mid_life: 'Mid Life',
-    elder: 'Elder',
-    late_life: 'Late Life',
+    childhood: 'Childhood', adolescence: 'Adolescence', young_adult: 'Young Adult',
+    adult: 'Adult', mid_life: 'Mid Life', elder: 'Elder', late_life: 'Late Life',
   };
   return labels[stage];
 }
