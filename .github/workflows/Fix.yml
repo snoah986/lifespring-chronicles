@@ -1,11 +1,53 @@
 name: fix
 on: workflow_dispatch
 jobs:
-  build:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: mv src/components/J*.tsx src/components/game/ 2>/dev/null || true
-      - run: mv src/components/S*.tsx src/components/game/ 2>/dev/null || true  
-      - run: git config user.email "a@a.com" && git config user.name "a"
-      - run: git add . && git commit -m "fix" && git push
+      
+      - name: Check current files
+        run: |
+          echo "Files in src/components/:"
+          ls -la src/components/ || echo "Directory empty"
+          echo "Files in src/components/game/:"
+          ls -la src/components/game/ || echo "Directory empty"
+      
+      - name: Move JobMarketPanel if exists
+        run: |
+          if [ -f "src/components/JobMarketPanel.tsx" ]; then
+            mv src/components/JobMarketPanel.tsx src/components/game/
+            echo "Moved JobMarketPanel"
+          else
+            echo "JobMarketPanel not found in src/components/"
+          fi
+      
+      - name: Move SchoolPanel if exists  
+        run: |
+          if [ -f "src/components/SchoolPanel.tsx" ]; then
+            mv src/components/SchoolPanel.tsx src/components/game/
+            echo "Moved SchoolPanel"
+          else
+            echo "SchoolPanel not found in src/components/"
+          fi
+      
+      - name: Remove duplicate if exists
+        run: |
+          if [ -f "src/components/Schoolpanel.tsx" ]; then
+            rm src/components/Schoolpanel.tsx
+            echo "Removed duplicate Schoolpanel"
+          fi
+      
+      - name: Commit and push
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Move panels to correct folder"
+            git push
+            echo "Changes pushed successfully"
+          fi
+
