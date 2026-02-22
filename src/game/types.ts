@@ -16,10 +16,13 @@ export type RelationshipType =
   | 'romantic' 
   | 'teacher' 
   | 'mentor' 
-  | 'neighbor';
+  | 'neighbor'
+  | 'criminal_contact'
+  | 'political_ally'
+  | 'political_rival';
 
 export type EmotionalValence = 'positive' | 'negative' | 'neutral';
-export type InteractionDomain = 'professional' | 'social' | 'romantic' | 'financial' | 'family' | 'academic';
+export type InteractionDomain = 'professional' | 'social' | 'romantic' | 'financial' | 'family' | 'academic' | 'criminal' | 'political';
 
 export interface Interaction {
   playerAge: number;
@@ -62,12 +65,20 @@ export interface GameEvent {
   maxAge: number;
   stage: LifeStage[];
   choices: EventChoice[];
+  isMandatory?: boolean; // mandatory events fire before random ones
 }
 
 export interface EventChoice {
   id: string;
   text: string;
-  effects: Partial<PlayerStats>;
+  effects: Partial<PlayerStats> & {
+    academicIntelligence?: number;
+    streetReputation?: number;
+    policeHeat?: number;
+    approvalRating?: number;
+    coalitionStability?: number;
+    annualSalary?: number;
+  };
   chronicleText: string;
   valence: EmotionalValence;
   npcInteraction?: {
@@ -76,6 +87,10 @@ export interface EventChoice {
     severity: number;
     domain: InteractionDomain;
   };
+  setsCareer?: string;
+  setsCriminalPath?: boolean;
+  setsPoliticalPath?: boolean;
+  locksUniversity?: boolean;
 }
 
 export interface ActiveEvent {
@@ -93,6 +108,19 @@ export interface GameState {
   chronicle: ChronicleEntry[];
   currentEvent: ActiveEvent | null;
   career: string;
+  careerTitle: string;
+  annualSalary: number;
+  universityLocked: boolean;
+  careerPathChosen: boolean;
+  criminalPath: boolean;
+  politicalPath: boolean;
+  // Hidden stats
+  academicIntelligence: number; // 0-100
+  streetReputation: number;     // 0-100
+  policeHeat: number;           // 0-100
+  approvalRating: number;       // 0-100 (political path)
+  coalitionStability: number;   // 0-100 (political path)
+  examsTaken: number[];         // ages at which exams have already fired
 }
 
 export function getLifeStage(age: number): LifeStage {
