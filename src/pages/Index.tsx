@@ -5,7 +5,6 @@ import StatsPanel from '@/components/game/StatsPanel';
 import EventFeed from '@/components/game/EventFeed';
 import Chronicle from '@/components/game/Chronicle';
 import DeathScreen from '@/components/game/DeathScreen';
-import SchoolPanel from '@/components/game/SchoolPanel';
 import JobMarketPanel from '@/components/game/JobMarketPanel';
 import { createInitialState, selectEventForAge, applyChoice, advanceYear, applyForJob, quitJob } from '@/game/engine';
 import { isSchoolAge, getCountry } from '@/game/countries';
