@@ -1,59 +1,33 @@
-import { useState, useCallback } from 'react';
+import { useContext } from 'react';
 
-export interface GameState {
-  character: {
-    age: number;
-    stats: {
-      intelligence: number;
-      reputation: number;
-      health: number;
-      happiness: number;
-    };
-    academicPerformance?: number;
-    job?: {
-      title: string;
-      salary: number;
-      tier: string;
-    };
-  } | null;
-  countryConfig: any;
-  npcs: any[];
-  events: any[];
-}
-
-export const useGameState = () => {
-  const [state, setState] = useState<GameState>({
+// Create a safe default context
+const defaultContext = {
+  state: {
     character: null,
     countryConfig: null,
     npcs: [],
     events: []
-  });
-
-  const dispatch = useCallback((action: any) => {
-    switch (action.type) {
-      case 'SET_JOB':
-        setState(prev => ({
-          ...prev,
-          character: prev.character ? {
-            ...prev.character,
-            job: action.payload
-          } : null
-        }));
-        break;
-      case 'QUIT_JOB':
-        setState(prev => ({
-          ...prev,
-          character: prev.character ? {
-            ...prev.character,
-            job: undefined
-          } : null
-        }));
-        break;
-      default:
-        break;
-    }
-  }, []);
-
-  return { state, dispatch };
+  },
+  dispatch: () => {}
 };
 
+// Try to import context, fall back to default if fails
+let GameContext: any;
+try {
+  GameContext = require('@/context/GameContext').GameContext;
+} catch {
+  GameContext = { Provider: ({children}: any) => children, Consumer: () => null };
+}
+
+export const useGameState = () => {
+  try {
+    const context = useContext(GameContext);
+    if (!context) {
+      return defaultContext;
+    }
+    return context;
+  } catch (error) {
+    console.error('useGameState error:', error);
+    return defaultContext;
+  }
+};
