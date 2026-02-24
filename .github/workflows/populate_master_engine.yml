@@ -1,0 +1,89 @@
+name: Populate Master Engine Integration
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Calendar and Time Management Engine
+        run: |
+          cat << 'EOF' > src/engine/timeEngine.ts
+          export interface TimeBlock {
+            id: string;
+            type: 'work' | 'study' | 'leisure' | 'family';
+            duration: number; // in hours
+          }
+
+          export function calculateBurnout(blocks: TimeBlock[]) {
+            const totalHours = blocks.reduce((acc, b) => acc + b.duration, 0);
+            return totalHours > 12 ? (totalHours - 12) * 5 : 0; // Mental Health penalty
+          }
+          EOF
+
+      - name: Create Legal and Tax Engine
+        run: |
+          cat << 'EOF' > src/engine/financeEngine.ts
+          export function calculateTax(income: number, country: string) {
+            // Alternative History Tax Brackets
+            if (income > 150000) return income * 0.45;
+            if (income > 50000) return income * 0.20;
+            return income * 0.10;
+          }
+
+          export function applyDebtInterest(liability: number, globalTrend: number) {
+            const rate = 0.05 + (globalTrend * 0.02);
+            return liability * (1 + rate);
+          }
+          EOF
+
+      - name: Update Store for Calendar and Archive
+        run: |
+          cat << 'EOF' > src/store/gameStore.ts
+          import { create } from 'zustand';
+
+          export const useGameStore = create((set) => ({
+            calendar: [],
+            archive: [],
+            debtAnchor: 0,
+            addKeepsake: (item) => set((state) => ({ archive: [...state.archive, item] })),
+            updateCalendar: (blocks) => set({ calendar: blocks }),
+            applyEndOfYear: () => set((state) => ({ 
+              wealth: state.wealth - state.debtAnchor * 0.05 
+            })),
+          }));
+          EOF
+
+      - name: Create Master SQL Migration (The Fork & Black Swan)
+        run: |
+          cat << 'EOF' > supabase/migrations/005_master_engine_seeds.sql
+          -- The 2.5% Black Swan Generator
+          ALTER TABLE game_states ADD COLUMN IF NOT EXISTS swan_event_triggered BOOLEAN DEFAULT (RANDOM() < 0.025);
+
+          -- Career Pivot & IP Ownership
+          INSERT INTO career_paths (path_type, name, description) VALUES 
+          ('sole_trader_v2', 'Strategic Founder', 'Transition from vendor to CEO.'),
+          ('pro_athlete', 'Pro Athlete', 'High-stakes performance with cull risk.');
+
+          -- Property and Asset Tiers
+          CREATE TABLE IF NOT EXISTS assets (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            owner_id UUID REFERENCES game_states(id),
+            asset_type TEXT,
+            market_value FLOAT,
+            equity FLOAT
+          );
+          EOF
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Integrated Master Engine: Calendar, Tax, Assets, and Black Swan Logic" || echo "No changes"
+          git pull origin main --rebase || echo "No pull"
+          git push
