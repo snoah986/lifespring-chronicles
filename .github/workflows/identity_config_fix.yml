@@ -1,0 +1,220 @@
+name: Identity Config & Engine Crash Fix
+on: [workflow_dispatch]
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Force Rewrite System
+        run: |
+          mkdir -p src/components src/store src/hooks
+
+          # 1. Update the Store to hold Config Data
+          cat << 'EOF' > src/store/gameStore.ts
+          import { create } from 'zustand';
+
+          export const useGameStore = create((set) => ({
+            gameState: {
+              current_age: 0,
+              current_stage: 'INFANCY',
+              name: '',
+              gender: '',
+              location: '',
+              stats: { health: 75, happiness: 50, wealth: 50, intelligence: 50 }
+            },
+            currentEvent: null,
+            setIdentity: (data) => set((state) => ({ 
+              gameState: { ...state.gameState, ...data } 
+            })),
+            setCurrentEvent: (event) => set({ currentEvent: event }),
+            incrementAge: () => set((state) => ({ 
+              gameState: { ...state.gameState, current_age: state.gameState.current_age + 1 } 
+            })),
+          }));
+          EOF
+
+          # 2. Unified App Switchboard
+          cat << 'EOF' > src/App.tsx
+          import React, { useState } from 'react';
+          import { LandingPage } from './components/LandingPage';
+          import { IdentityConfig } from './components/IdentityConfig';
+          import { BirthCertificate } from './components/BirthCertificate';
+          import { GameContainer } from './components/GameContainer';
+
+          export default function App() {
+            const [view, setView] = useState('landing'); // landing, config, birth, play
+
+            return (
+              <main className="bg-[#0a0a0a] min-h-screen">
+                {view === 'landing' && <LandingPage onComplete={() => setView('config')} />}
+                {view === 'config' && <IdentityConfig onComplete={() => setView('birth')} />}
+                {view === 'birth' && <BirthCertificate onStart={() => setView('play')} />}
+                {view === 'play' && <GameContainer />}
+              </main>
+            );
+          }
+          EOF
+
+          # 3. NEW: Identity Configuration Screen
+          cat << 'EOF' > src/components/IdentityConfig.tsx
+          import React, { useState } from 'react';
+          import { useGameStore } from '../store/gameStore';
+
+          export function IdentityConfig({ onComplete }) {
+            const [data, setData] = useState({ name: '', gender: 'Male', location: 'Wembley, UK' });
+            const setIdentity = useGameStore(state => state.setIdentity);
+
+            const handleConfirm = () => {
+              if (!data.name) return alert("Identify Subject Name.");
+              setIdentity(data);
+              onComplete();
+            };
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-10 flex flex-col justify-center font-serif">
+                <div className="max-w-xs space-y-10">
+                  <h2 className="text-[#c2410c] uppercase tracking-[0.4em] text-xs">Identity Configuration</h2>
+                  
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[9px] uppercase text-[#3f3f46] tracking-widest">Subject Name</label>
+                      <input 
+                        className="bg-transparent border-b border-[#1c1c1f] focus:border-[#c2410c] outline-none py-2 text-xl font-light transition-colors"
+                        onChange={(e) => setData({...data, name: e.target.value})}
+                        placeholder="Enter Name..."
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[9px] uppercase text-[#3f3f46] tracking-widest">Biological Class</label>
+                      <select 
+                        className="bg-[#0a0a0a] border-b border-[#1c1c1f] outline-none py-2"
+                        onChange={(e) => setData({...data, gender: e.target.value})}
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Non-Binary</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[9px] uppercase text-[#3f3f46] tracking-widest">Deployment Zone</label>
+                      <select 
+                        className="bg-[#0a0a0a] border-b border-[#1c1c1f] outline-none py-2"
+                        onChange={(e) => setData({...data, location: e.target.value})}
+                      >
+                        <option value="Wembley, UK">Wembley, UK</option>
+                        <option value="London, UK">London, UK</option>
+                        <option value="Birmingham, UK">Birmingham, UK</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleConfirm}
+                    className="w-full py-4 border border-[#c2410c] text-[#c2410c] text-[10px] tracking-[0.5em] uppercase hover:bg-[#c2410c] hover:text-white transition-all"
+                  >
+                    Confirm Extraction
+                  </button>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+          # 4. Updated Birth Certificate (Dossier)
+          cat << 'EOF' > src/components/BirthCertificate.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+
+          export function BirthCertificate({ onStart }: { onStart: () => void }) {
+            const { gameState } = useGameStore();
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-8 flex flex-col justify-center animate-in fade-in duration-1000">
+                <div className="max-w-md mx-auto border border-[#1c1c1f] p-10 space-y-10 bg-black/40 relative">
+                  <div className="absolute top-0 right-0 p-3 text-[8px] font-mono text-[#c2410c] opacity-30">REF: LC-2026</div>
+                  <div className="space-y-2 border-b border-[#1c1c1f] pb-6">
+                    <h2 className="text-sm font-mono tracking-[0.6em] text-[#c2410c] uppercase">Identity Dossier</h2>
+                    <p className="text-[9px] text-[#3f3f46] uppercase tracking-widest">VITAL EXTRACTION COMPLETE</p>
+                  </div>
+                  <div className="space-y-4 font-mono text-[11px] tracking-widest">
+                    <div className="flex justify-between border-b border-[#1c1c1f]/30 pb-2">
+                      <span className="text-[#3f3f46]">NAME:</span>
+                      <span className="uppercase">{gameState.name}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-[#1c1c1f]/30 pb-2">
+                      <span className="text-[#3f3f46]">GENDER:</span>
+                      <span className="uppercase">{gameState.gender}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-[#1c1c1f]/30 pb-2">
+                      <span className="text-[#3f3f46]">ZONE:</span>
+                      <span className="uppercase">{gameState.location}</span>
+                    </div>
+                    <div className="flex justify-between pt-2">
+                      <span className="text-[#3f3f46]">ANOMALY:</span>
+                      <span className="text-green-500/80">HIGH PAIN TOLERANCE</span>
+                    </div>
+                  </div>
+                  <button onClick={onStart} className="w-full py-5 bg-[#c2410c] text-white text-[10px] tracking-[0.6em] uppercase hover:bg-orange-600 transition-colors">Initialize Simulation</button>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+          # 5. Fixed Game Container (Crash Resistant)
+          cat << 'EOF' > src/components/GameContainer.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+
+          export function GameContainer() {
+            const { gameState, currentEvent, incrementAge } = useGameStore();
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-10 flex flex-col justify-between">
+                <div className="space-y-16">
+                  <div className="border-b border-[#1c1c1f] pb-8 flex justify-between items-end">
+                    <div>
+                      <p className="text-[10px] text-[#3f3f46] uppercase tracking-[0.4em] mb-2">Subject: {gameState.name}</p>
+                      <h2 className="text-4xl font-light text-[#fafafa]">Age {gameState.current_age}</h2>
+                    </div>
+                    <h2 className="text-[10px] font-mono text-[#c2410c] border border-[#c2410c]/30 px-3 py-1 uppercase">{gameState.current_stage}</h2>
+                  </div>
+                  
+                  <div className="space-y-8 max-w-xl">
+                    <h3 className="text-4xl font-serif text-[#fafafa] leading-tight tracking-tight">
+                      {currentEvent?.title || "Simulation Initialized"}
+                    </h3>
+                    <p className="text-lg text-[#71717a] font-light italic leading-relaxed">
+                      {currentEvent?.narrative || "You are currently observing the initial node of your extraction. The world is calibrated."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <button 
+                    onClick={incrementAge}
+                    className="w-full py-6 bg-transparent border border-[#c2410c] text-[#c2410c] text-[10px] tracking-[0.6em] uppercase hover:bg-[#c2410c] hover:text-white transition-all duration-700 active:scale-95"
+                  >
+                    Advance Life
+                  </button>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+      - name: Force Push
+        run: |
+          git config --global user.name "Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Engine: Added Identity Config, Dossier Update, and Crash Fix" || echo "no changes"
+          git push origin main --force
