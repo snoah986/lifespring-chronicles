@@ -1,0 +1,112 @@
+name: Populate Core Engines
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Populate Utility Functions
+        run: |
+          cat << 'EOF' > src/lib/utils.ts
+          export function clamp(value: number, min: number, max: number): number {
+            return Math.max(min, Math.min(max, value));
+          }
+          EOF
+
+      - name: Populate Stat Engine (Task 1.2)
+        run: |
+          cat << 'EOF' > src/engine/statEngine.ts
+          import type { StatBlock, LifeStage } from '../types';
+          import { clamp } from '../lib/utils';
+
+          export function applyStatDeltas(currentStats: StatBlock, deltas: Partial<StatBlock>): StatBlock {
+            return {
+              health: clamp(currentStats.health + (deltas.health || 0), 0, 100),
+              happiness: clamp(currentStats.happiness + (deltas.happiness || 0), 0, 100),
+              wealth: clamp(currentStats.wealth + (deltas.wealth || 0), 0, 100),
+              intelligence: clamp(currentStats.intelligence + (deltas.intelligence || 0), 0, 100),
+              social: clamp(currentStats.social + (deltas.social || 0), 0, 100),
+              creativity: clamp(currentStats.creativity + (deltas.creativity || 0), 0, 100),
+              fitness: clamp(currentStats.fitness + (deltas.fitness || 0), 0, 100),
+              spirituality: clamp(currentStats.spirituality + (deltas.spirituality || 0), 0, 100),
+              resilience: clamp(currentStats.resilience + (deltas.resilience || 0), 0, 100),
+              wisdom: clamp(currentStats.wisdom + (deltas.wisdom || 0), 0, 100),
+              reputation: clamp(currentStats.reputation + (deltas.reputation || 0), 0, 100),
+              mental_health: clamp(currentStats.mental_health + (deltas.mental_health || 0), 0, 100),
+            };
+          }
+
+          export function calculateDecay(stats: StatBlock, age: number, stage: LifeStage): Partial<StatBlock> {
+            const decay: Partial<StatBlock> = {};
+            if (age > 30) {
+              decay.fitness = -0.5;
+              decay.health = -0.2;
+            }
+            return decay;
+          }
+
+          export function normalizeWealthStat(netWorth: number): number {
+            if (netWorth <= -50000) return 0;
+            if (netWorth >= 5000000) return 100;
+            if (netWorth < 0) return Math.floor(30 + (netWorth / 100000 * 30));
+            if (netWorth < 100000) return Math.floor(30 + (netWorth / 100000 * 20));
+            if (netWorth < 500000) return Math.floor(50 + ((netWorth - 100000) / 400000 * 20));
+            if (netWorth < 1000000) return Math.floor(70 + ((netWorth - 500000) / 500000 * 20));
+            return Math.floor(90 + ((netWorth - 1000000) / 4000000 * 10));
+          }
+          EOF
+
+      - name: Populate Event Engine (Task 1.3)
+        run: |
+          cat << 'EOF' > src/engine/eventEngine.ts
+          import type { Event, GameState, EventHistory, LifeStage } from '../types';
+
+          export function isEventUnlocked(event: Event, eventHistory: EventHistory[]): boolean {
+            const historyIds = eventHistory.map(eh => eh.event_id);
+            
+            if (event.locked_by_events && event.locked_by_events.length > 0) {
+              const isLocked = event.locked_by_events.some(lockedId => historyIds.includes(lockedId));
+              if (isLocked) return false;
+            }
+
+            if (event.required_prior_events && event.required_prior_events.length > 0) {
+              const hasRequired = event.required_prior_events.every(reqId => historyIds.includes(reqId));
+              if (!hasRequired) return false;
+            }
+
+            return true;
+          }
+
+          export function getNextEvent(gameState: GameState, eventHistory: EventHistory[], availableEvents: Event[]): Event | null {
+            const eligibleEvents = availableEvents.filter(event => {
+              if (gameState.current_age < event.min_age || gameState.current_age > event.max_age) return false;
+              if (gameState.current_stage !== event.stage) return false;
+              
+              const alreadyExperienced = eventHistory.some(eh => eh.event_id === event.id);
+              if (alreadyExperienced) return false;
+
+              return isEventUnlocked(event, eventHistory);
+            });
+
+            if (eligibleEvents.length === 0) return null;
+
+            const mandatoryEvent = eligibleEvents.find(e => e.is_milestone);
+            if (mandatoryEvent) return mandatoryEvent;
+
+            const randomIndex = Math.floor(Math.random() * eligibleEvents.length);
+            return eligibleEvents[randomIndex];
+          }
+          EOF
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add src/lib/utils.ts src/engine/statEngine.ts src/engine/eventEngine.ts
+          git commit -m "Injected Task 1.2 and 1.3 engine logic"
+          git push
