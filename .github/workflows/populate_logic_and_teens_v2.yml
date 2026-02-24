@@ -1,0 +1,183 @@
+name: Populate Game Logic, Teens, and Butterfly Engine
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Butterfly Effect Hook
+        run: |
+          cat << 'EOF' > src/hooks/useButterflyEffect.ts
+          import { useState, useEffect } from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import type { Event } from '../types';
+
+          export function useButterflyEffect(currentEvent: Event | null) {
+            const [echoText, setEchoText] = useState<string | null>(null);
+            const eventHistory = useGameStore(state => state.eventHistory);
+
+            useEffect(() => {
+              if (!currentEvent || !currentEvent.resonance_tags) {
+                setEchoText(null);
+                return;
+              }
+
+              const historyIds = eventHistory.map(eh => eh.event_id);
+              let foundEcho = null;
+
+              if (currentEvent.resonance_tags.includes('childhood_trauma') && historyIds.includes('stage1_parent_conflict')) {
+                foundEcho = "The shouting from decades ago rings in your ears today...";
+              } else if (currentEvent.resonance_tags.includes('spatial_awareness') && historyIds.includes('stage1_spatial_blocks')) {
+                foundEcho = "The wooden blocks from your childhood guide your hand...";
+              } else if (currentEvent.resonance_tags.includes('teen_rebellion') && historyIds.includes('stage3_the_rebellion')) {
+                foundEcho = "You remember the rush of the midnight air when you were their age...";
+              }
+
+              if (foundEcho) {
+                setEchoText(foundEcho);
+                setTimeout(() => setEchoText(null), 6000);
+              }
+            }, [currentEvent, eventHistory]);
+
+            return { echoText };
+          }
+          EOF
+
+      - name: Create AI Narrator Hook
+        run: |
+          cat << 'EOF' > src/hooks/useAINarrator.ts
+          import { useState } from 'react';
+          import type { Event, StatBlock } from '../types';
+
+          export function useAINarrator() {
+            const [isDrafting, setIsDrafting] = useState(false);
+            const [aiNarrative, setAiNarrative] = useState<string | null>(null);
+
+            const generateNarrative = async (event: Event, stats: StatBlock) => {
+              setIsDrafting(true);
+              
+              let toneDirective = "neutral and observational";
+              if (stats.mental_health < 30) toneDirective = "cynical, muted, and slightly melancholic";
+              if (stats.mental_health > 80) toneDirective = "vivid, hopeful, and deeply appreciative";
+
+              setTimeout(() => {
+                const prefix = stats.mental_health < 30 ? "Everything feels heavy. " : 
+                               stats.mental_health > 80 ? "The world feels impossibly bright. " : "";
+                
+                setAiNarrative(`${prefix} ${event.narrative} (AI Narrative Tone: ${toneDirective})`);
+                setIsDrafting(false);
+              }, 2500);
+            };
+
+            return { generateNarrative, isDrafting, aiNarrative, setAiNarrative };
+          }
+          EOF
+
+      - name: Create Main Game Engine Hook
+        run: |
+          cat << 'EOF' > src/hooks/useGameEngine.ts
+          import { useEffect } from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import { getNextEvent } from '../engine/eventEngine';
+
+          export function useGameEngine() {
+            const { 
+              gameState, 
+              loadedEvents, 
+              currentEvent, 
+              eventHistory,
+              applyStatDeltas,
+              progressAge,
+              addEventToHistory
+            } = useGameStore();
+
+            useEffect(() => {
+              if (gameState && !currentEvent && loadedEvents.length > 0) {
+                const next = getNextEvent(gameState, eventHistory, loadedEvents);
+                if (next) {
+                  useGameStore.setState({ currentEvent: next });
+                }
+              }
+            }, [gameState?.current_age, currentEvent, loadedEvents.length]);
+
+            const processChoice = (choiceIndex: number) => {
+              if (!currentEvent || !gameState) return;
+
+              const choice = currentEvent.choices[choiceIndex];
+              let finalDeltas = { ...choice.statDeltas };
+
+              if (gameState.current_age >= 12 && gameState.current_age <= 14) {
+                if (finalDeltas.happiness) finalDeltas.happiness *= 1.5;
+                if (finalDeltas.mental_health) finalDeltas.mental_health *= 1.5;
+              }
+
+              if (gameState.current_age >= 13 && gameState.current_age <= 17 && finalDeltas.reputation && finalDeltas.reputation < 0) {
+                finalDeltas.happiness = (finalDeltas.happiness || 0) - 10;
+                finalDeltas.mental_health = (finalDeltas.mental_health || 0) - 10;
+              }
+
+              applyStatDeltas(finalDeltas);
+              addEventToHistory(currentEvent, choice);
+              useGameStore.setState({ currentEvent: null });
+              progressAge(1);
+            };
+
+            return { processChoice };
+          }
+          EOF
+
+      - name: Create Stage 2 and 3 SQL Migration
+        run: |
+          cat << 'EOF' > supabase/migrations/003_stage_2_3_seeds.sql
+          INSERT INTO events (event_key, title, narrative, min_age, max_age, stage, is_milestone, choices)
+          VALUES (
+            'stage2_hobby_obsession',
+            'The Fixation',
+            'You have discovered a hobby that consumes your waking thoughts. Your parents are calling you for dinner.',
+            8, 12, 'middle_childhood', false,
+            '[
+              {
+                "text": "Ignore them. Keep working.",
+                "stat_deltas": {"intelligence": 15, "social": -15, "mental_health": -5},
+                "unlocks_events": ["hobby_burnout_risk"],
+                "legacy_points": 5
+              }
+            ]'::jsonb
+          );
+
+          INSERT INTO events (event_key, title, narrative, min_age, max_age, stage, is_milestone, choices)
+          VALUES (
+            'stage3_the_rebellion',
+            'Curfew Shattered',
+            'It is 2 AM. Your curfew was midnight. The house is dark.',
+            15, 17, 'teen_years', true,
+            '[
+              {
+                "text": "Lie smoothly. Blame a flat tire.",
+                "stat_deltas": {"intelligence": 5, "reputation": -5},
+                "npc_effects": [{"type": "family", "trust": -20}],
+                "unlocks_events": ["rebellion_snowball_active"],
+                "legacy_points": 0
+              }
+            ]'::jsonb
+          );
+
+          ALTER TABLE events ADD COLUMN IF NOT EXISTS resonance_tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+          
+          UPDATE events SET resonance_tags = ARRAY['spatial_awareness'] WHERE event_key = 'stage1_spatial_blocks';
+          UPDATE events SET resonance_tags = ARRAY['teen_rebellion'] WHERE event_key = 'stage3_the_rebellion';
+          EOF
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add src/hooks/useAINarrator.ts src/hooks/useGameEngine.ts src/hooks/useButterflyEffect.ts supabase/migrations/003_stage_2_3_seeds.sql
+          git commit -m "Injected Core Game Hooks, Butterfly Engine, and Stage 2/3 Teen Mechanics" || echo "No changes to commit"
+          git pull origin main --rebase || echo "Nothing to pull"
+          git push
