@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LandingPage } from './components/LandingPage';
+import { BirthCertificate } from './components/BirthCertificate';
 import { GameContainer } from './components/GameContainer';
-import { useGameStore } from './store/gameStore';
 
 export default function App() {
-  const { currentEvent } = useGameStore();
-  const path = window.location.pathname;
-  
-  // If we are at /play, show the game. Otherwise, show Landing.
+  const [view, setView] = useState('landing'); // landing, birth, play
+
   return (
     <main className="bg-[#0a0a0a] min-h-screen selection:bg-[#c2410c]">
-      {path === '/play' ? <GameContainer /> : <LandingPage />}
+      {view === 'landing' && <LandingPage onComplete={() => setView('birth')} />}
+      {view === 'birth' && <BirthCertificate onStart={() => setView('play')} />}
+      {view === 'play' && <GameContainer />}
     </main>
   );
 }

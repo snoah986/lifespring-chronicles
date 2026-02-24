@@ -14,19 +14,16 @@ export function GameContainer() {
             <p className="text-[10px] text-[#3f3f46] uppercase tracking-[0.3em]">Timeline</p>
             <h2 className="text-3xl font-light text-[#fafafa]">Age {gameState.current_age}</h2>
           </div>
-          <h2 className="text-sm font-mono text-[#c2410c] uppercase">{gameState.current_stage}</h2>
+          <h2 className="text-sm font-mono text-[#c2410c] uppercase">{gameState.current_stage || "Stage 0"}</h2>
         </div>
         <div className="space-y-8">
-          <h3 className="text-4xl font-serif text-[#fafafa] leading-tight">{currentEvent?.title || "Initializing..."}</h3>
+          <h3 className="text-4xl font-serif text-[#fafafa] leading-tight">{currentEvent?.title || "Simulation Initialized"}</h3>
           <p className="text-lg text-[#71717a] font-light italic leading-relaxed">{currentEvent?.narrative || "The world is quiet as the simulation calibrates."}</p>
         </div>
       </div>
-      <button 
-        onClick={advanceLife}
-        className="w-full py-6 border border-[#c2410c] text-[#c2410c] text-xs tracking-[0.5em] uppercase hover:bg-[#c2410c] hover:text-white transition-all duration-700 active:scale-95"
-      >
-        Advance Life
-      </button>
+      <div className="pt-10">
+        <button onClick={advanceLife} className="w-full py-6 border border-[#c2410c] text-[#c2410c] text-xs tracking-[0.5em] uppercase hover:bg-[#c2410c] hover:text-white transition-all duration-500">Advance Life</button>
+      </div>
     </div>
   );
 }
