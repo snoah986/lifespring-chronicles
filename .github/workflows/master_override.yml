@@ -1,0 +1,142 @@
+name: Master UI & Button Override
+on: [workflow_dispatch]
+
+jobs:
+  override:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Force Update Engine & UI
+        run: |
+          # 1. Clean build conflicts
+          rm -f yarn.lock pnpm-lock.yaml package-lock.json
+          npm install --package-lock-only
+          npm install zustand lucide-react --save
+
+          # 2. Rewrite the Switchboard (App.tsx)
+          mkdir -p src/components
+          cat << 'EOF' > src/App.tsx
+          import React from 'react';
+          import { LandingPage } from './components/LandingPage';
+          import { GameContainer } from './components/GameContainer';
+          import { useGameStore } from './store/gameStore';
+
+          export default function App() {
+            const { currentEvent } = useGameStore();
+            const path = window.location.pathname;
+            
+            // If we are at /play, show the game. Otherwise, show Landing.
+            return (
+              <main className="bg-[#0a0a0a] min-h-screen selection:bg-[#c2410c]">
+                {path === '/play' ? <GameContainer /> : <LandingPage />}
+              </main>
+            );
+          }
+          EOF
+
+          # 3. High-End Graphite & Copper Landing Page
+          cat << 'EOF' > src/components/LandingPage.tsx
+          import React, { useState, useEffect } from 'react';
+
+          export function LandingPage() {
+            const [isLoading, setIsLoading] = useState(false);
+            const [progress, setProgress] = useState(0);
+
+            useEffect(() => {
+              if (isLoading && progress < 100) {
+                const timer = setTimeout(() => setProgress(p => p + 1), 20);
+                return () => clearTimeout(timer);
+              } else if (progress >= 100) {
+                window.location.href = '/play';
+              }
+            }, [isLoading, progress]);
+
+            if (isLoading) {
+              return (
+                <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-10 font-mono text-[#c2410c]">
+                  <div className="w-full max-w-xs space-y-6">
+                    <div className="h-[1px] w-full bg-[#1c1c1f] relative">
+                      <div className="absolute h-full bg-[#c2410c] shadow-[0_0_15px_#c2410c]" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[10px] tracking-[0.4em]">
+                      <span>NEURAL_SYNC</span>
+                      <span>{progress}%</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] flex flex-col justify-between p-12 font-serif overflow-hidden">
+                <div className="flex justify-between items-start text-[9px] tracking-[0.4em] text-[#3f3f46] uppercase">
+                  <div>Extraction // Node: Wembley</div>
+                  <div className="text-[#c2410c] font-mono">L|C</div>
+                </div>
+                <div className="border-l border-[#c2410c]/20 pl-8">
+                  <h1 className="text-8xl font-light tracking-tighter text-[#fafafa] leading-[0.8]">Lifespring<br/><span className="italic text-[#c2410c]">Chronicles</span></h1>
+                  <p className="text-[10px] text-[#52525b] uppercase tracking-[0.4em] mt-8">A Sentient World Simulation</p>
+                </div>
+                <button onClick={() => setIsLoading(true)} className="group flex items-center gap-6 text-3xl font-light hover:text-white transition-all">
+                  <span className="w-12 h-[1px] bg-[#c2410c] group-hover:w-24 transition-all duration-700" />
+                  BEGIN EXTRACTION
+                </button>
+              </div>
+            );
+          }
+          EOF
+
+          # 4. Tactical Game HUD with ADVANCE Button
+          cat << 'EOF' > src/components/GameContainer.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import { useGameLoop } from '../hooks/useGameLoop';
+
+          export function GameContainer() {
+            const { gameState, currentEvent } = useGameStore();
+            const { advanceLife } = useGameLoop();
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-8 flex flex-col justify-between">
+                <div className="space-y-12">
+                  <div className="border-b border-[#1c1c1f] pb-6 flex justify-between items-end">
+                    <div>
+                      <p className="text-[10px] text-[#3f3f46] uppercase tracking-[0.3em]">Timeline</p>
+                      <h2 className="text-3xl font-light text-[#fafafa]">Age {gameState.current_age}</h2>
+                    </div>
+                    <h2 className="text-sm font-mono text-[#c2410c] uppercase">{gameState.current_stage}</h2>
+                  </div>
+                  <div className="space-y-8">
+                    <h3 className="text-4xl font-serif text-[#fafafa] leading-tight">{currentEvent?.title || "Initializing..."}</h3>
+                    <p className="text-lg text-[#71717a] font-light italic leading-relaxed">{currentEvent?.narrative || "The world is quiet as the simulation calibrates."}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={advanceLife}
+                  className="w-full py-6 border border-[#c2410c] text-[#c2410c] text-xs tracking-[0.5em] uppercase hover:bg-[#c2410c] hover:text-white transition-all duration-700 active:scale-95"
+                >
+                  Advance Life
+                </button>
+              </div>
+            );
+          }
+          EOF
+
+          # 5. Routing Fix
+          cat << 'EOF' > vercel.json
+          { "rewrites": [{ "source": "/(.*)", "destination": "/" }] }
+          EOF
+
+      - name: Force Push
+        run: |
+          git config --global user.name "Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Master Fix: Forced Graphite UI & Advance Button" || echo "no changes"
+          git push origin main --force
