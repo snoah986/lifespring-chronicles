@@ -1,0 +1,33 @@
+name: Restore Core Dependencies
+on: [workflow_dispatch]
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Force Install Zustand and UI Core
+        run: |
+          # 1. Manually add the missing dependencies to package.json
+          npm install zustand lucide-react @supabase/supabase-js --save
+          
+          # 2. Update vercel.json to be even more aggressive with the install
+          cat << 'EOF' > vercel.json
+          {
+            "installCommand": "npm install --include=dev",
+            "framework": "vite"
+          }
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Fix: Restored Zustand and core UI dependencies"
+          git pull origin main --rebase
+          git push
