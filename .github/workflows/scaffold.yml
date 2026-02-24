@@ -1,0 +1,61 @@
+name: Architect Build
+on: [workflow_dispatch]
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Directory Structure
+        run: |
+          mkdir -p src/components/ui
+          mkdir -p src/components/game
+          mkdir -p src/components/layout
+          mkdir -p src/engine
+          mkdir -p src/hooks
+          mkdir -p src/store
+          mkdir -p src/types
+          mkdir -p src/lib
+          mkdir -p src/pages
+          mkdir -p src/integrations/supabase
+          mkdir -p supabase/migrations
+
+      - name: Create Configuration Files
+        run: |
+          touch package.json tsconfig.json tsconfig.app.json tsconfig.node.json
+          touch vite.config.ts tailwind.config.ts postcss.config.js eslint.config.js
+          touch components.json index.html
+
+      - name: Create Engine & Logic Files
+        run: |
+          touch src/engine/statEngine.ts src/engine/eventEngine.ts src/engine/npcEngine.ts
+          touch src/engine/financialEngine.ts src/engine/legacyEngine.ts
+          touch src/store/gameStore.ts src/types/index.ts
+          touch src/lib/supabase.ts src/lib/constants.ts src/lib/utils.ts
+          touch src/hooks/useGameEngine.ts src/hooks/useAINarrator.ts src/hooks/useEventTrigger.ts src/hooks/useStatDecay.ts
+
+      - name: Create UI Component Files
+        run: |
+          touch src/components/game/StatBar.tsx src/components/game/EventCard.tsx
+          touch src/components/game/ChoiceButton.tsx src/components/game/NPCPanel.tsx
+          touch src/components/game/NPCCard.tsx src/components/game/LifeTimeline.tsx
+          touch src/components/game/LegacyScreen.tsx
+
+      - name: Create Pages & Database Files
+        run: |
+          touch src/pages/MainMenu.tsx src/pages/NewGame.tsx src/pages/Game.tsx src/pages/Legacy.tsx
+          touch src/App.tsx
+          touch src/integrations/supabase/queries.ts src/integrations/supabase/mutations.ts
+          touch supabase/migrations/001_initial_schema.sql
+
+      - name: Commit and Push to Repository
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Automated Phase 0 Architecture Scaffolding"
+          git push
