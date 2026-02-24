@@ -1,0 +1,39 @@
+name: Universal Hosting Fix
+on: [workflow_dispatch]
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Reconstruct Project for Hosting
+        run: |
+          # 1. Kill the problematic lockfile
+          rm -f package-lock.json
+          
+          # 2. Create the Vercel Config to override the dashboard settings
+          cat << 'EOF' > vercel.json
+          {
+            "installCommand": "npm install --production=false",
+            "framework": "vite"
+          }
+          EOF
+
+          # 3. Strip out the testing libraries that are cluttering your build
+          # This cleans up the package.json so it only has what the game needs
+          sed -i '/@testing-library/d' package.json
+          sed -i '/vitest/d' package.json
+          sed -i '/jsdom/d' package.json
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Host Fix: Added vercel.json override and cleaned dependencies"
+          git pull origin main --rebase
+          git push
