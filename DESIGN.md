@@ -620,3 +620,10 @@ Use Lovable's responsive utilities: `md:hidden`, `lg:grid-cols-3`, etc.
 **End of Design System Document**
 
 This design system is optimized for Lifespring Chronicles' narrative-driven, emotionally resonant gameplay. All specifications are implementation-ready for the Lovable platform (Vite + React + TypeScript + Tailwind + shadcn/ui).
+## UI Innovation Updates (Recorded Feb 2026)
+- **StatBar:** Discard basic shadow bars. Implement highly realistic biological or physical tension indicators to represent stat interdependencies. Physical threshold markers are required.
+- **ChoiceButton:** Locked choices display a padlock with a contextual hint. High-risk choices (high regret weight or danger) trigger a secondary confirmation modal to prevent accidental clicks.
+- **EventCard:** Dynamic NPC avatars change expression and visual state based on exact situational context. Backgrounds utilize emotional weight color gradients rather than solid colors.
+- **Mobile Layout:** The timeline is moved to a dedicated, separate tab to save memory and screen real estate.
+- **New Game:** The character generation is presented as a procedural "Birth Certificate" summary.
+- **AI Loading:** Replaces standard spinners with an innovative, highly immersive visual state.
