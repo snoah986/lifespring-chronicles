@@ -1,0 +1,211 @@
+name: Populate Core Files
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Populate TypeScript Interfaces (Task 0.2)
+        run: |
+          cat << 'EOF' > src/types/index.ts
+          export enum LifeStage {
+            BIRTH = 0,
+            EARLY_CHILDHOOD = 1,
+            MIDDLE_CHILDHOOD = 2,
+            TEEN_YEARS = 3,
+            LATE_TEEN = 4,
+            YOUNG_ADULT_1 = 5,
+            YOUNG_ADULT_2 = 6,
+            ADULT_PEAK = 7,
+            MIDDLE_AGE = 8,
+            SENIOR = 9,
+            END_OF_LIFE = 10
+          }
+
+          export interface StatBlock {
+            health: number;
+            happiness: number;
+            wealth: number;
+            intelligence: number;
+            social: number;
+            creativity: number;
+            fitness: number;
+            spirituality: number;
+            resilience: number;
+            wisdom: number;
+            reputation: number;
+            mental_health: number;
+          }
+
+          export interface GameState {
+            id?: string;
+            player_id?: string;
+            current_age: number;
+            current_stage: LifeStage;
+            stats: StatBlock;
+            financial_state: any;
+            regret_index: number;
+            legacy_points: number;
+            bucket_list: any[];
+            is_alive: boolean;
+          }
+
+          export interface Choice {
+            text: string;
+            statDeltas?: Partial<StatBlock>;
+            npcEffects?: any[];
+            unlocksEvents?: string[];
+            locksEvents?: string[];
+            regretWeight?: number;
+            legacyPoints?: number;
+          }
+
+          export interface Event {
+            id: string;
+            event_key: string;
+            title: string;
+            narrative: string;
+            min_age: number;
+            max_age: number;
+            stage: LifeStage;
+            is_milestone: boolean;
+            random_chance?: number;
+            choices: Choice[];
+          }
+
+          export interface EventHistory {
+            id?: string;
+            game_state_id: string;
+            event_id: string;
+            age_occurred: number;
+            choice_made: number;
+            stat_state_before: StatBlock;
+            stat_state_after: StatBlock;
+          }
+
+          export interface NPC {
+            id: string;
+            name: string;
+            type: 'family' | 'friend' | 'partner' | 'rival' | 'mentor' | 'child';
+            depth: number;
+            trust: number;
+            loyalty: number;
+            status: 'alive' | 'estranged' | 'deceased' | 'lost_touch';
+            last_interaction_age: number;
+          }
+          EOF
+
+      - name: Populate Zustand Game Store (Task 1.1)
+        run: |
+          cat << 'EOF' > src/store/gameStore.ts
+          import { create } from 'zustand';
+          import type { GameState, Event, EventHistory, NPC, StatBlock } from '../types';
+
+          interface GameStoreState {
+            gameState: GameState | null;
+            loadedEvents: Event[];
+            currentEvent: Event | null;
+            eventHistory: EventHistory[];
+            npcs: NPC[];
+            loadGame: (gameId: string) => Promise<void>;
+            saveGame: () => Promise<void>;
+            applyStatDeltas: (deltas: Partial<StatBlock>) => void;
+            progressAge: (years: number) => void;
+            addEventToHistory: (event: Event, choice: any) => void;
+            updateNPC: (npcId: string, updates: Partial<NPC>) => void;
+            calculateLegacyScore: () => void;
+          }
+
+          export const useGameStore = create<GameStoreState>((set) => ({
+            gameState: null,
+            loadedEvents: [],
+            currentEvent: null,
+            eventHistory: [],
+            npcs: [],
+            loadGame: async (gameId) => {},
+            saveGame: async () => {},
+            applyStatDeltas: (deltas) => {},
+            progressAge: (years) => {},
+            addEventToHistory: (event, choice) => {},
+            updateNPC: (npcId, updates) => {},
+            calculateLegacyScore: () => {},
+          }));
+          EOF
+
+      - name: Populate Initial Database Schema (Task 0.3)
+        run: |
+          cat << 'EOF' > supabase/migrations/001_initial_schema.sql
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+          CREATE TABLE game_states (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            player_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+            current_age INTEGER NOT NULL CHECK (current_age >= 0 AND current_age <= 120),
+            current_stage INTEGER NOT NULL CHECK (current_stage >= 0 AND current_stage <= 10),
+            stats JSONB NOT NULL,
+            financial_state JSONB NOT NULL,
+            regret_index INTEGER DEFAULT 0,
+            legacy_points INTEGER DEFAULT 0,
+            is_alive BOOLEAN DEFAULT true,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_saved_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
+          CREATE TYPE life_stage AS ENUM (
+            'birth_infancy', 'early_childhood', 'middle_childhood', 'teen_years',
+            'late_teen', 'young_adult_1', 'young_adult_2', 'adult_peak',
+            'middle_age', 'senior', 'end_of_life'
+          );
+
+          CREATE TABLE events (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            event_key TEXT UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            narrative TEXT NOT NULL,
+            min_age INTEGER NOT NULL,
+            max_age INTEGER NOT NULL,
+            stage life_stage NOT NULL,
+            is_milestone BOOLEAN DEFAULT false,
+            choices JSONB NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
+          CREATE TABLE event_history (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            game_state_id UUID NOT NULL REFERENCES game_states(id) ON DELETE CASCADE,
+            event_id UUID NOT NULL REFERENCES events(id),
+            age_occurred INTEGER NOT NULL,
+            stage_occurred life_stage NOT NULL,
+            choice_index INTEGER NOT NULL,
+            stat_deltas JSONB NOT NULL,
+            occurred_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
+          CREATE TYPE npc_type AS ENUM ('family', 'friend', 'partner', 'rival', 'mentor', 'child');
+          CREATE TYPE npc_status AS ENUM ('alive', 'estranged', 'deceased', 'lost_touch');
+
+          CREATE TABLE npcs (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            game_state_id UUID NOT NULL REFERENCES game_states(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            type npc_type NOT NULL,
+            depth INTEGER DEFAULT 0,
+            trust INTEGER DEFAULT 50,
+            status npc_status DEFAULT 'alive',
+            last_interaction_age INTEGER,
+            created_at_age INTEGER NOT NULL
+          );
+          EOF
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add src/types/index.ts src/store/gameStore.ts supabase/migrations/001_initial_schema.sql
+          git commit -m "Injected Task 0.2, 0.3, and 1.1 code"
+          git push
