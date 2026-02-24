@@ -1,0 +1,137 @@
+name: Grand Engine Integration
+on: [workflow_dispatch]
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inject 12-Stat Engine & Multi-Tab UI
+        run: |
+          mkdir -p src/components src/store src/data
+
+          # 1. Professional 12-Stat Store
+          cat << 'EOF' > src/store/gameStore.ts
+          import { create } from 'zustand';
+
+          export const useGameStore = create((set) => ({
+            gameState: {
+              current_age: 0,
+              current_stage: 'INFANCY',
+              name: '', gender: '', location: '',
+              stats: {
+                health: 80, happiness: 60, wealth: 100, intelligence: 70,
+                fitness: 50, social: 50, influence: 10, syndicate_debt: 0,
+                academic: 0, criminal: 0, stress: 20, focus: 100
+              }
+            },
+            currentEvent: null,
+            activeTab: 'STORY', // STORY, ACADEMY, STADIUM, HUSTLE, NETWORK
+            setIdentity: (data) => set((state) => ({ gameState: { ...state.gameState, ...data } })),
+            setTab: (tab) => set({ activeTab: tab }),
+            setCurrentEvent: (event) => set({ currentEvent: event }),
+            applyChoice: (effects) => set((state) => {
+              const newStats = { ...state.gameState.stats };
+              Object.keys(effects).forEach(key => { newStats[key] += effects[key]; });
+              return { gameState: { ...state.gameState, stats: newStats }, currentEvent: null };
+            }),
+            incrementAge: () => set((state) => ({ 
+              gameState: { ...state.gameState, current_age: state.gameState.current_age + 1 } 
+            })),
+          }));
+          EOF
+
+          # 2. Tactical HUD Component (Graphite & Copper)
+          cat << 'EOF' > src/components/HUD.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+
+          export function HUD() {
+            const { gameState } = useGameStore();
+            const statEntries = Object.entries(gameState.stats);
+
+            return (
+              <div className="grid grid-cols-3 gap-2 p-4 bg-[#0d0d0d] border-b border-[#1c1c1f]">
+                {statEntries.map(([key, value]) => (
+                  <div key={key} className="flex flex-col">
+                    <span className="text-[7px] uppercase tracking-widest text-[#3f3f46]">{key.replace('_', ' ')}</span>
+                    <div className="flex items-center gap-1">
+                      <div className="h-[2px] flex-1 bg-[#1c1c1f] relative">
+                        <div className="absolute h-full bg-[#c2410c]" style={{ width: `${Math.min(value, 100)}%` }} />
+                      </div>
+                      <span className="text-[8px] font-mono text-[#fafafa]">{value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          }
+          EOF
+
+          # 3. Main Game Container with Tabs and Choices
+          cat << 'EOF' > src/components/GameContainer.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import { HUD } from './HUD';
+
+          export function GameContainer() {
+            const { gameState, currentEvent, activeTab, setTab, applyChoice, incrementAge } = useGameStore();
+
+            const renderContent = () => {
+              if (activeTab === 'STORY') {
+                return (
+                  <div className="space-y-6">
+                    <h2 className="text-2xl font-serif text-[#fafafa]">{currentEvent?.title || "Passive Extraction..."}</h2>
+                    <p className="text-sm text-[#71717a] italic">{currentEvent?.narrative || "The world moves around you."}</p>
+                    <div className="flex flex-col gap-3">
+                      {currentEvent?.choices?.map((c, i) => (
+                        <button key={i} onClick={() => applyChoice(c.effects)} 
+                                className="w-full py-3 border border-[#c2410c]/30 text-[#fafafa] text-[10px] tracking-widest uppercase hover:bg-[#c2410c] transition-all">
+                          {c.text}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="flex items-center justify-center h-40 border border-dashed border-[#1c1c1f]">
+                  <p className="text-[10px] text-[#3f3f46] uppercase tracking-[0.4em]">{activeTab} MODULE OFFLINE AT AGE {gameState.current_age}</p>
+                </div>
+              );
+            };
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] flex flex-col">
+                <HUD />
+                <div className="p-8 flex-1">{renderContent()}</div>
+                
+                {/* Navigation Bar */}
+                <div className="grid grid-cols-5 border-t border-[#1c1c1f] bg-[#0d0d0d]">
+                  {['STORY', 'ACADEMY', 'STADIUM', 'HUSTLE', 'NETWORK'].map(t => (
+                    <button key={t} onClick={() => setTab(t)} 
+                            className={`py-4 text-[7px] tracking-widest uppercase ${activeTab === t ? 'text-[#c2410c] border-t border-[#c2410c]' : 'text-[#3f3f46]'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                
+                <button onClick={incrementAge} className="w-full py-4 bg-[#c2410c] text-white text-[10px] tracking-[0.5em] uppercase">Advance Year</button>
+              </div>
+            );
+          }
+          EOF
+
+      - name: Force Push
+        run: |
+          git config --global user.name "Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Engine: Full Spine Integration - 12 Stats, Tabs, and Choice Matrix" || echo "no changes"
+          git push origin main --force
