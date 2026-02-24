@@ -1,0 +1,202 @@
+name: Populate UI and Update Blueprints
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Populate StatBar Component (Task 1.4)
+        run: |
+          cat << 'EOF' > src/components/game/StatBar.tsx
+          import React from 'react';
+
+          interface StatBarProps {
+            statName: string;
+            value: number;
+            maxValue?: number;
+            delta?: number;
+            color?: string;
+            showLabel?: boolean;
+          }
+
+          export function StatBar({
+            statName,
+            value,
+            maxValue = 100,
+            delta,
+            color = 'bg-blue-500',
+            showLabel = true
+          }: StatBarProps) {
+            const percentage = Math.max(0, Math.min(100, (value / maxValue) * 100));
+
+            return (
+              <div className="flex flex-col gap-1 w-full mb-2 relative">
+                {showLabel && (
+                  <div className="flex justify-between text-xs font-inter text-slate-300">
+                    <span className="capitalize">{statName.replace('_', ' ')}</span>
+                    <span className="font-mono">{Math.round(value)}/{maxValue}</span>
+                  </div>
+                )}
+                {/* Future implementation zone for biological/tension interdependency indicators */}
+                <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                  <div 
+                    className={`h-full ${color} transition-all duration-300 ease-in-out`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                  {/* Physical Threshold Markers */}
+                  <div className="absolute top-0 bottom-0 left-[30%] w-[1px] bg-red-500/50 z-10" />
+                  <div className="absolute top-0 bottom-0 left-[60%] w-[1px] bg-yellow-500/30 z-10" />
+                </div>
+                {delta !== undefined && delta !== 0 && (
+                  <span className={`text-xs ${delta > 0 ? 'text-green-400' : 'text-red-400'} animate-pulse`}>
+                    {delta > 0 ? '+' : ''}{delta}
+                  </span>
+                )}
+              </div>
+            );
+          }
+          EOF
+
+      - name: Populate ChoiceButton Component (Task 1.5)
+        run: |
+          cat << 'EOF' > src/components/game/ChoiceButton.tsx
+          import React, { useState } from 'react';
+          import type { Choice } from '../../types';
+
+          interface ChoiceButtonProps {
+            choice: Choice;
+            onSelect: (choice: Choice) => void;
+            disabled?: boolean;
+            isLocked?: boolean;
+            lockHint?: string;
+            requiresConfirmation?: boolean;
+          }
+
+          export function ChoiceButton({ 
+            choice, 
+            onSelect, 
+            disabled = false,
+            isLocked = false,
+            lockHint,
+            requiresConfirmation = false
+          }: ChoiceButtonProps) {
+            const [showConfirm, setShowConfirm] = useState(false);
+
+            if (isLocked) {
+              return (
+                <button disabled className="w-full text-left p-4 rounded-lg border-2 border-slate-800 bg-slate-900 text-slate-500 opacity-60 cursor-not-allowed flex items-center gap-3">
+                  <span className="text-xl">🔒</span>
+                  <div className="flex flex-col">
+                    <span className="font-inter text-sm line-through">{choice.text}</span>
+                    <span className="text-xs text-red-400/80 font-mono mt-1">{lockHint || "Path locked due to past choices."}</span>
+                  </div>
+                </button>
+              );
+            }
+
+            if (showConfirm) {
+              return (
+                <div className="w-full p-4 rounded-lg border-2 border-red-500/50 bg-red-950/20 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
+                  <span className="text-sm text-red-200 font-medium text-center">Are you certain? This choice has major consequences.</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowConfirm(false)} className="flex-1 p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md text-sm transition-colors">Cancel</button>
+                    <button onClick={() => onSelect(choice)} className="flex-1 p-2 bg-red-900 hover:bg-red-800 text-red-100 rounded-md text-sm transition-colors font-medium">Confirm</button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <button
+                onClick={() => requiresConfirmation ? setShowConfirm(true) : onSelect(choice)}
+                disabled={disabled}
+                className={`w-full text-left p-4 rounded-lg border-2 transition-all duration-200 
+                  ${disabled 
+                    ? 'border-slate-800 bg-slate-900 text-slate-500 opacity-50 cursor-not-allowed' 
+                    : 'border-slate-700 bg-slate-800 text-slate-200 hover:border-blue-500 hover:bg-slate-700 active:scale-[0.98]'
+                  } flex flex-col gap-2 relative group`}
+              >
+                <span className="font-inter text-sm md:text-base leading-relaxed">{choice.text}</span>
+              </button>
+            );
+          }
+          EOF
+
+      - name: Populate EventCard Component (Task 1.4)
+        run: |
+          cat << 'EOF' > src/components/game/EventCard.tsx
+          import React from 'react';
+          import type { Event, LifeStage } from '../../types';
+          import { ChoiceButton } from './ChoiceButton';
+
+          interface EventCardProps {
+            event: Event;
+            currentAge: number;
+            currentStage: LifeStage;
+            onChoiceSelect: (choiceIndex: number) => void;
+          }
+
+          export function EventCard({ event, currentAge, currentStage, onChoiceSelect }: EventCardProps) {
+            // Future implementation: gradient generation based on event weight
+            const baseGradient = "bg-gradient-to-b from-[#1a1a1c] to-[#111112]";
+
+            return (
+              <div className={`w-full max-w-2xl mx-auto ${baseGradient} border border-[#3a3a3d] rounded-xl p-6 shadow-2xl flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+                <div className="flex justify-between items-center border-b border-[#3a3a3d] pb-4">
+                  <h2 className="text-2xl font-medium font-lora text-[#f5f5f0]">{event.title}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-slate-800/80 text-slate-300 font-mono text-sm rounded-full border border-slate-700 backdrop-blur-sm">
+                      Age {currentAge}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Future implementation: Situational NPC Avatars will inject here */}
+                
+                <div className="prose prose-invert max-w-none">
+                  <p className="text-lg font-lora text-[#e5e5e0] leading-relaxed">
+                    {event.narrative}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 mt-4">
+                  {event.choices.map((choice, index) => (
+                    <ChoiceButton 
+                      key={index} 
+                      choice={choice} 
+                      onSelect={() => onChoiceSelect(index)}
+                      requiresConfirmation={choice.regretWeight !== undefined && choice.regretWeight > 50}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+      - name: Update Blueprint Documentation
+        run: |
+          cat << 'EOF' >> DESIGN.md
+
+          ## UI Innovation Updates (Recorded Feb 2026)
+          - **StatBar:** Discard basic shadow bars. Implement highly realistic biological or physical tension indicators to represent stat interdependencies. Physical threshold markers are required.
+          - **ChoiceButton:** Locked choices display a padlock with a contextual hint. High-risk choices (high regret weight or danger) trigger a secondary confirmation modal to prevent accidental clicks.
+          - **EventCard:** Dynamic NPC avatars change expression and visual state based on exact situational context. Backgrounds utilize emotional weight color gradients rather than solid colors.
+          - **Mobile Layout:** The timeline is moved to a dedicated, separate tab to save memory and screen real estate.
+          - **New Game:** The character generation is presented as a procedural "Birth Certificate" summary.
+          - **AI Loading:** Replaces standard spinners with an innovative, highly immersive visual state.
+          EOF
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add src/components/game/StatBar.tsx src/components/game/ChoiceButton.tsx src/components/game/EventCard.tsx DESIGN.md
+          git commit -m "Injected Task 1.4 and 1.5 UI components and updated blueprints"
+          git pull origin main --rebase
+          git push
