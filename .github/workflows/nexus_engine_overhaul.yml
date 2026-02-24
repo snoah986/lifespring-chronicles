@@ -1,0 +1,139 @@
+name: Nexus Engine Overhaul
+on: [workflow_dispatch]
+
+jobs:
+  overhaul:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inject Country/City Logic & 3-Choice Engine
+        run: |
+          mkdir -p src/data src/components src/hooks
+
+          # 1. Expanded Geographic Data
+          cat << 'EOF' > src/data/geography.ts
+          export const COUNTRIES = {
+            'United Kingdom': ['London', 'Birmingham', 'Manchester', 'Wembley'],
+            'United States': ['New York', 'Los Angeles', 'Chicago', 'Miami'],
+            'United Arab Emirates': ['Dubai', 'Abu Dhabi']
+          };
+          EOF
+
+          # 2. Advanced 3-Choice Event Generator
+          cat << 'EOF' > src/hooks/useGameLoop.ts
+          import { useGameStore } from '../store/gameStore';
+
+          export function useGameLoop() {
+            const { gameState, incrementAge, setCurrentEvent } = useGameStore();
+
+            const generateEvent = (age) => {
+              const themes = ['Academic', 'Social', 'Physical', 'Financial', 'Risk'];
+              const theme = themes[Math.floor(Math.random() * themes.length)];
+              
+              return {
+                title: `${theme} Encounter: Year ${age}`,
+                narrative: `A significant ${theme.toLowerCase()} opportunity has emerged in ${gameState.location}. How do you proceed?`,
+                choices: [
+                  { text: 'Calculated Approach', effects: { intelligence: 5, stress: 2 } },
+                  { text: 'Aggressive Expansion', effects: { wealth: 10, stress: 10, happiness: -5 } },
+                  { text: 'Passive Observation', effects: { focus: 5, social: -2 } }
+                ]
+              };
+            };
+
+            const advanceLife = () => {
+              incrementAge();
+              setCurrentEvent(generateEvent(gameState.current_age + 1));
+            };
+
+            return { advanceLife };
+          }
+          EOF
+
+          # 3. Two-Step Identity Configuration
+          cat << 'EOF' > src/components/IdentityConfig.tsx
+          import React, { useState } from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import { COUNTRIES } from '../data/geography';
+
+          export function IdentityConfig({ onComplete }) {
+            const [data, setData] = useState({ name: '', gender: 'Male', country: 'United Kingdom', location: 'London' });
+            const setIdentity = useGameStore(state => state.setIdentity);
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-10 flex flex-col justify-center font-serif">
+                <div className="max-w-xs space-y-6">
+                  <h2 className="text-[#c2410c] uppercase tracking-[0.4em] text-[10px]">Identity Setup</h2>
+                  <input className="w-full bg-transparent border-b border-[#1c1c1f] py-2 outline-none" placeholder="Name" onChange={(e)=>setData({...data, name: e.target.value})} />
+                  
+                  <select className="w-full bg-[#0a0a0a] border-b border-[#1c1c1f] py-2" onChange={(e)=>setData({...data, country: e.target.value})}>
+                    {Object.keys(COUNTRIES).map(c => <option key={c}>{c}</option>)}
+                  </select>
+
+                  <select className="w-full bg-[#0a0a0a] border-b border-[#1c1c1f] py-2" onChange={(e)=>setData({...data, location: e.target.value})}>
+                    {COUNTRIES[data.country].map(city => <option key={city}>{city}</option>)}
+                  </select>
+
+                  <button onClick={() => {setIdentity(data); onComplete();}} className="w-full py-4 border border-[#c2410c] text-[#c2410c] uppercase text-[10px]">Confirm</button>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+          # 4. Functional Tabbed Interface
+          cat << 'EOF' > src/components/GameContainer.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import { useGameLoop } from '../hooks/useGameLoop';
+
+          export function GameContainer() {
+            const { gameState, currentEvent, activeTab, setTab, applyChoice } = useGameStore();
+            const { advanceLife } = useGameLoop();
+
+            const renderTabContent = () => {
+              switch(activeTab) {
+                case 'ACADEMY': return <div className="p-4 border border-[#1c1c1f]">Rank: Grade A | Focus: Science</div>;
+                case 'STADIUM': return <div className="p-4 border border-[#1c1c1f]">Condition: 85% | Speed: Elite</div>;
+                case 'HUSTLE': return <div className="p-4 border border-[#1c1c1f]">Balance: ${gameState.stats.wealth} | Job: Intern</div>;
+                default: return (
+                  <div className="space-y-6">
+                    <h3 className="text-3xl font-light">{currentEvent?.title || "Story Start"}</h3>
+                    <p className="text-[#71717a] italic">{currentEvent?.narrative || "Your journey begins."}</p>
+                    <div className="space-y-3">
+                      {currentEvent?.choices?.map((c, i) => (
+                        <button key={i} onClick={() => applyChoice(c.effects)} className="w-full py-3 border border-[#c2410c]/40 text-[10px] uppercase hover:bg-[#c2410c]">{c.text}</button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+            };
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+                <div className="flex-1 p-8">{renderTabContent()}</div>
+                <div className="grid grid-cols-4 bg-[#0d0d0d] border-t border-[#1c1c1f]">
+                  {['STORY', 'ACADEMY', 'STADIUM', 'HUSTLE'].map(t => (
+                    <button key={t} onClick={() => setTab(t)} className={`py-4 text-[8px] uppercase ${activeTab === t ? 'text-[#c2410c]' : 'text-[#3f3f46]'}`}>{t}</button>
+                  ))}
+                </div>
+                <button onClick={advanceLife} className="py-6 bg-[#c2410c] text-white text-[10px] uppercase tracking-widest">Advance Year</button>
+              </div>
+            );
+          }
+          EOF
+
+      - name: Force Push
+        run: |
+          git config --global user.name "Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Engine: Fixed Tabs, Added Country/City split, 3-Choice Narrative" || echo "no changes"
+          git push origin main --force
