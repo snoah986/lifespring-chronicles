@@ -1,50 +1,38 @@
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useGameLoop } from '../hooks/useGameLoop';
 import { HUD } from './HUD';
 
 export function GameContainer() {
-  const { gameState, currentEvent, activeTab, setTab, applyChoice, incrementAge } = useGameStore();
-
-  const renderContent = () => {
-    if (activeTab === 'STORY') {
-      return (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-serif text-[#fafafa]">{currentEvent?.title || "Passive Extraction..."}</h2>
-          <p className="text-sm text-[#71717a] italic">{currentEvent?.narrative || "The world moves around you."}</p>
-          <div className="flex flex-col gap-3">
-            {currentEvent?.choices?.map((c, i) => (
-              <button key={i} onClick={() => applyChoice(c.effects)} 
-                      className="w-full py-3 border border-[#c2410c]/30 text-[#fafafa] text-[10px] tracking-widest uppercase hover:bg-[#c2410c] transition-all">
-                {c.text}
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center justify-center h-40 border border-dashed border-[#1c1c1f]">
-        <p className="text-[10px] text-[#3f3f46] uppercase tracking-[0.4em]">{activeTab} MODULE OFFLINE AT AGE {gameState.current_age}</p>
-      </div>
-    );
-  };
+  const { gameState, currentEvent, activeTab, setTab } = useGameStore();
+  const { advanceLife } = useGameLoop();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] flex flex-col font-serif">
       <HUD />
-      <div className="p-8 flex-1">{renderContent()}</div>
-      
-      {/* Navigation Bar */}
-      <div className="grid grid-cols-5 border-t border-[#1c1c1f] bg-[#0d0d0d]">
-        {['STORY', 'ACADEMY', 'STADIUM', 'HUSTLE', 'NETWORK'].map(t => (
-          <button key={t} onClick={() => setTab(t)} 
-                  className={`py-4 text-[7px] tracking-widest uppercase ${activeTab === t ? 'text-[#c2410c] border-t border-[#c2410c]' : 'text-[#3f3f46]'}`}>
-            {t}
-          </button>
-        ))}
+      <div className="flex-1 p-8 overflow-y-auto space-y-8">
+        <div className="flex justify-between items-center text-[10px] text-[#c2410c] uppercase tracking-widest border-b border-[#1c1c1f] pb-4">
+          <span>Year: {gameState.current_age}</span>
+          <span>Zone: {gameState.location}</span>
+        </div>
+        
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h2 className="text-3xl font-light text-[#fafafa]">{currentEvent?.title || "Initializing..."}</h2>
+          <p className="text-base text-[#71717a] leading-relaxed italic">{currentEvent?.narrative || "System awaiting tactical advance."}</p>
+        </div>
       </div>
-      
-      <button onClick={incrementAge} className="w-full py-4 bg-[#c2410c] text-white text-[10px] tracking-[0.5em] uppercase">Advance Year</button>
+
+      <div className="bg-[#0d0d0d] border-t border-[#1c1c1f]">
+        <div className="grid grid-cols-4 border-b border-[#1c1c1f]">
+          {['STORY', 'ACADEMY', 'STADIUM', 'HUSTLE'].map(t => (
+            <button key={t} onClick={() => setTab(t)} 
+                    className={`py-4 text-[7px] tracking-widest uppercase ${activeTab === t ? 'text-[#c2410c] border-b border-[#c2410c]' : 'text-[#3f3f46]'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <button onClick={advanceLife} className="w-full py-6 bg-[#c2410c] text-white text-[10px] tracking-[0.5em] uppercase hover:bg-orange-600 transition-all">Advance Year</button>
+      </div>
     </div>
   );
 }

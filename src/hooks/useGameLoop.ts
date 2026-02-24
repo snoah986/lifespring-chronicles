@@ -1,12 +1,17 @@
 import { useGameStore } from '../store/gameStore';
+import { LIFE_EVENTS } from '../data/events';
+
 export function useGameLoop() {
-  const { setCurrentEvent } = useGameStore();
+  const { gameState, incrementAge, setCurrentEvent, applyChoice } = useGameStore();
+
   const advanceLife = () => {
-    setCurrentEvent({
-      title: "Game Loaded",
-      narrative: "The World Simulator is online. Database keys pending, but the engine is live.",
-      choices: [{text: "Begin Journey", delta: {}}]
-    });
+    incrementAge();
+    const possibleEvents = LIFE_EVENTS.filter(e => 
+      gameState.current_age >= e.ageRange[0] && gameState.current_age <= e.ageRange[1]
+    );
+    const randomEvent = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
+    setCurrentEvent(randomEvent || { title: 'Quiet Year', narrative: 'The simulation remains stable. No major anomalies detected.' });
   };
+
   return { advanceLife };
 }
