@@ -7,19 +7,14 @@ export function useAINarrator() {
 
   const generateNarrative = async (event: Event, stats: StatBlock) => {
     setIsDrafting(true);
+    // Tone Distortion Filter based on Mental Health
+    let tone = stats.mental_health < 30 ? "cynical" : stats.mental_health > 80 ? "hopeful" : "neutral";
     
-    let toneDirective = "neutral and observational";
-    if (stats.mental_health < 30) toneDirective = "cynical, muted, and slightly melancholic";
-    if (stats.mental_health > 80) toneDirective = "vivid, hopeful, and deeply appreciative";
-
     setTimeout(() => {
-      const prefix = stats.mental_health < 30 ? "Everything feels heavy. " : 
-                     stats.mental_health > 80 ? "The world feels impossibly bright. " : "";
-      
-      setAiNarrative(`${prefix} ${event.narrative} (AI Narrative Tone: ${toneDirective})`);
+      setAiNarrative(`(Tone: ${tone}) ${event.narrative}`);
       setIsDrafting(false);
-    }, 2500);
+    }, 2000);
   };
 
-  return { generateNarrative, isDrafting, aiNarrative, setAiNarrative };
+  return { generateNarrative, isDrafting, aiNarrative };
 }
