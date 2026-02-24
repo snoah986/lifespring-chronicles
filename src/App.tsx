@@ -1,15 +1,16 @@
 import React from 'react';
-import { MainMenu } from './pages/MainMenu';
-import { NewGame } from './pages/NewGame';
-import { Game } from './pages/Game';
+import { LandingPage } from './components/LandingPage';
+import { GameContainer } from './components/GameContainer';
+import { useGameStore } from './store/gameStore';
 
-function App() {
+export default function App() {
+  const { currentEvent } = useGameStore();
   const path = window.location.pathname;
-
-  if (path === '/new-game') return <NewGame />;
-  if (path === '/game') return <Game />;
   
-  return <MainMenu />;
+  // If we are at /play, show the game. Otherwise, show Landing.
+  return (
+    <main className="bg-[#0a0a0a] min-h-screen selection:bg-[#c2410c]">
+      {path === '/play' ? <GameContainer /> : <LandingPage />}
+    </main>
+  );
 }
-
-export default App;
