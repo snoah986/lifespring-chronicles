@@ -1,0 +1,64 @@
+name: Testing Readiness Integration
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Event Orchestrator
+        run: |
+          cat << 'EOF' > src/engine/eventOrchestrator.ts
+          import { supabase } from '../lib/supabase';
+          import { useGameStore } from '../store/gameStore';
+
+          export async function fetchNextEvent(age: number, stage: string) {
+            const { data, error } = await supabase
+              .from('events')
+              .select('*')
+              .eq('stage', stage)
+              .gte('min_age', age)
+              .lte('max_age', age)
+              .limit(1)
+              .single();
+            
+            if (error) return null;
+            return data;
+          }
+          EOF
+
+      - name: Final UI Bridge
+        run: |
+          cat << 'EOF' > src/components/game/TestRunner.tsx
+          import React, { useEffect } from 'react';
+          import { useGameStore } from '../../store/gameStore';
+          import { fetchNextEvent } from '../../engine/eventOrchestrator';
+
+          export function TestRunner() {
+            const { gameState, setCurrentEvent } = useGameStore();
+
+            const loadNext = async () => {
+              const event = await fetchNextEvent(gameState.current_age, gameState.current_stage);
+              setCurrentEvent(event);
+            };
+
+            return (
+              <button onClick={loadNext} className="p-4 bg-green-600 text-white rounded">
+                Start Alpha Test
+              </button>
+            );
+          }
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Testing Readiness: Event Orchestrator and UI Bridge" || echo "No changes"
+          git pull origin main --rebase
+          git push
