@@ -1,0 +1,152 @@
+name: Unified Engine Fix (No Crash)
+on: [workflow_dispatch]
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Force Rewrite Core Simulation
+        run: |
+          mkdir -p src/components
+          
+          # 1. App Switchboard (State-Based Routing to prevent crashes)
+          cat << 'EOF' > src/App.tsx
+          import React, { useState } from 'react';
+          import { LandingPage } from './components/LandingPage';
+          import { BirthCertificate } from './components/BirthCertificate';
+          import { GameContainer } from './components/GameContainer';
+
+          export default function App() {
+            const [view, setView] = useState('landing'); // landing, birth, play
+
+            return (
+              <main className="bg-[#0a0a0a] min-h-screen selection:bg-[#c2410c]">
+                {view === 'landing' && <LandingPage onComplete={() => setView('birth')} />}
+                {view === 'birth' && <BirthCertificate onStart={() => setView('play')} />}
+                {view === 'play' && <GameContainer />}
+              </main>
+            );
+          }
+          EOF
+
+          # 2. Updated Landing Page (Uses Callback instead of URL)
+          cat << 'EOF' > src/components/LandingPage.tsx
+          import React, { useState, useEffect } from 'react';
+
+          export function LandingPage({ onComplete }: { onComplete: () => void }) {
+            const [isLoading, setIsLoading] = useState(false);
+            const [progress, setProgress] = useState(0);
+
+            useEffect(() => {
+              if (isLoading && progress < 100) {
+                const timer = setTimeout(() => setProgress(p => p + 1), 15);
+                return () => clearTimeout(timer);
+              } else if (progress >= 100) {
+                onComplete();
+              }
+            }, [isLoading, progress, onComplete]);
+
+            if (isLoading) {
+              return (
+                <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-10 font-mono text-[#c2410c]">
+                  <div className="w-full max-w-xs space-y-6">
+                    <div className="h-[1px] w-full bg-[#1c1c1f] relative"><div className="absolute h-full bg-[#c2410c] shadow-[0_0_15px_#c2410c]" style={{ width: `${progress}%` }} /></div>
+                    <div className="flex justify-between text-[10px] tracking-[0.4em]"><span>NEURAL_SYNC</span><span>{progress}%</span></div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] flex flex-col justify-between p-12 font-serif overflow-hidden">
+                <div className="flex justify-between items-start text-[9px] tracking-[0.4em] text-[#3f3f46] uppercase">
+                  <div>Extraction // Node: Wembley</div>
+                  <div className="text-[#c2410c] font-mono">L|C</div>
+                </div>
+                <div className="border-l border-[#c2410c]/20 pl-8">
+                  <h1 className="text-8xl font-light tracking-tighter text-[#fafafa] leading-[0.8]">Lifespring<br/><span className="italic text-[#c2410c]">Chronicles</span></h1>
+                  <p className="text-[10px] text-[#52525b] uppercase tracking-[0.4em] mt-8">Sentient World Simulation</p>
+                </div>
+                <button onClick={() => setIsLoading(true)} className="group flex items-center gap-6 text-3xl font-light hover:text-white transition-all">
+                  <span className="w-12 h-[1px] bg-[#c2410c] group-hover:w-24 transition-all duration-700" />
+                  BEGIN EXTRACTION
+                </button>
+              </div>
+            );
+          }
+          EOF
+
+          # 3. High-Fidelity Birth Certificate (Dossier Style)
+          cat << 'EOF' > src/components/BirthCertificate.tsx
+          import React from 'react';
+
+          export function BirthCertificate({ onStart }: { onStart: () => void }) {
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-8 flex flex-col justify-center animate-in fade-in duration-1000">
+                <div className="max-w-md mx-auto border border-[#1c1c1f] p-8 space-y-8 relative overflow-hidden bg-black/40">
+                  <div className="absolute top-0 right-0 p-2 text-[8px] font-mono text-[#c2410c] opacity-30">SUB-732002</div>
+                  <div className="space-y-2 border-b border-[#1c1c1f] pb-6">
+                    <h2 className="text-sm font-mono tracking-[0.5em] text-[#c2410c] uppercase">Identity Dossier</h2>
+                    <p className="text-[9px] text-[#3f3f46] uppercase tracking-widest">Department of Vital Records & Simulation</p>
+                  </div>
+                  <div className="space-y-4 font-mono text-[11px] tracking-wider">
+                    <div className="flex justify-between"><span className="text-[#3f3f46]">ORIGIN:</span><span>WEMBLEY, UK</span></div>
+                    <div className="flex justify-between"><span className="text-[#3f3f46]">ANOMALY:</span><span className="text-green-500/80">HIGH PAIN TOLERANCE</span></div>
+                    <div className="flex justify-between"><span className="text-[#3f3f46]">DYNAMIC:</span><span>DISTANT WEALTHY</span></div>
+                  </div>
+                  <div className="pt-8">
+                    <button onClick={onStart} className="w-full py-4 bg-[#c2410c] text-white text-[10px] tracking-[0.5em] uppercase hover:bg-orange-600 transition-colors">Initialize Life</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+          # 4. Tactical Game Container with AGE button
+          cat << 'EOF' > src/components/GameContainer.tsx
+          import React from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import { useGameLoop } from '../hooks/useGameLoop';
+
+          export function GameContainer() {
+            const { gameState, currentEvent } = useGameStore();
+            const { advanceLife } = useGameLoop();
+
+            return (
+              <div className="min-h-screen bg-[#0a0a0a] text-[#d4d4d8] p-8 flex flex-col justify-between">
+                <div className="space-y-12">
+                  <div className="border-b border-[#1c1c1f] pb-6 flex justify-between items-end">
+                    <div>
+                      <p className="text-[10px] text-[#3f3f46] uppercase tracking-[0.3em]">Timeline</p>
+                      <h2 className="text-3xl font-light text-[#fafafa]">Age {gameState.current_age}</h2>
+                    </div>
+                    <h2 className="text-sm font-mono text-[#c2410c] uppercase">{gameState.current_stage || "Stage 0"}</h2>
+                  </div>
+                  <div className="space-y-8">
+                    <h3 className="text-4xl font-serif text-[#fafafa] leading-tight">{currentEvent?.title || "Simulation Initialized"}</h3>
+                    <p className="text-lg text-[#71717a] font-light italic leading-relaxed">{currentEvent?.narrative || "The world is quiet as the simulation calibrates."}</p>
+                  </div>
+                </div>
+                <div className="pt-10">
+                  <button onClick={advanceLife} className="w-full py-6 border border-[#c2410c] text-[#c2410c] text-xs tracking-[0.5em] uppercase hover:bg-[#c2410c] hover:text-white transition-all duration-500">Advance Life</button>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+      - name: Force Push
+        run: |
+          git config --global user.name "Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Engine: Unified State Fix, added BirthCert and Age Button" || echo "no changes"
+          git push origin main --force
