@@ -1,11 +1,12 @@
-import { MOCK_EVENTS } from '../lib/mockEvents';
 import { useGameStore } from '../store/gameStore';
-
 export function useGameLoop() {
-  const { gameState, setCurrentEvent } = useGameStore();
+  const { setCurrentEvent } = useGameStore();
   const advanceLife = () => {
-    const next = MOCK_EVENTS.find(e => e.age >= gameState.current_age);
-    if (next) setCurrentEvent(next);
+    setCurrentEvent({
+      title: "Game Loaded",
+      narrative: "The World Simulator is online. Database keys pending, but the engine is live.",
+      choices: [{text: "Begin Journey", delta: {}}]
+    });
   };
   return { advanceLife };
 }
