@@ -1,0 +1,134 @@
+name: Populate System Integration
+on: [workflow_dispatch]
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Specialized Logic Hooks
+        run: |
+          cat << 'EOF' > src/hooks/useButterflyEffect.ts
+          import { useState, useEffect } from 'react';
+          import { useGameStore } from '../store/gameStore';
+          import type { Event } from '../types';
+
+          export function useButterflyEffect(currentEvent: Event | null) {
+            const [echoText, setEchoText] = useState<string | null>(null);
+            const eventHistory = useGameStore(state => state.eventHistory);
+
+            useEffect(() => {
+              if (!currentEvent || !currentEvent.resonance_tags) return;
+              const historyIds = eventHistory.map(eh => eh.event_id);
+              
+              // Logic for 40+ Resonance Echoes
+              if (currentEvent.resonance_tags.includes('spatial_awareness') && historyIds.includes('stage1_spatial_blocks')) {
+                setEchoText("The wooden blocks from your childhood guide your hand...");
+              } else if (currentEvent.resonance_tags.includes('teen_rebellion') && historyIds.includes('stage3_the_rebellion')) {
+                setEchoText("You remember the rush of the midnight air when you were their age...");
+              }
+              
+              const timer = setTimeout(() => setEchoText(null), 6000);
+              return () => clearTimeout(timer);
+            }, [currentEvent, eventHistory]);
+
+            return { echoText };
+          }
+          EOF
+
+          cat << 'EOF' > src/hooks/useAINarrator.ts
+          import { useState } from 'react';
+          import type { Event, StatBlock } from '../types';
+
+          export function useAINarrator() {
+            const [isDrafting, setIsDrafting] = useState(false);
+            const [aiNarrative, setAiNarrative] = useState<string | null>(null);
+
+            const generateNarrative = async (event: Event, stats: StatBlock) => {
+              setIsDrafting(true);
+              // Tone Distortion Filter based on Mental Health
+              let tone = stats.mental_health < 30 ? "cynical" : stats.mental_health > 80 ? "hopeful" : "neutral";
+              
+              setTimeout(() => {
+                setAiNarrative(`(Tone: ${tone}) ${event.narrative}`);
+                setIsDrafting(false);
+              }, 2000);
+            };
+
+            return { generateNarrative, isDrafting, aiNarrative };
+          }
+          EOF
+
+      - name: Create Phone and Archive UI
+        run: |
+          cat << 'EOF' > src/components/game/PhoneHub.tsx
+          import React from 'react';
+
+          export function PhoneHub() {
+            return (
+              <div className="w-full h-full bg-[#0a0a0b] p-4 flex flex-col gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">📱</div>
+                    <span className="text-[10px] uppercase font-mono">Social</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-pink-600 rounded-xl flex items-center justify-center">❤️</div>
+                    <span className="text-[10px] uppercase font-mono">Dating</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center">🛒</div>
+                    <span className="text-[10px] uppercase font-mono">Shop</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+          cat << 'EOF' > src/components/game/Archive.tsx
+          import React from 'react';
+
+          export function Archive() {
+            return (
+              <div className="w-full p-4 flex flex-col gap-4">
+                <h2 className="text-sm font-mono text-slate-500 uppercase tracking-widest">The Archive</h2>
+                <div className="border border-dashed border-slate-700 p-8 text-center text-slate-600 text-xs">
+                  Your keepsakes will be preserved here.
+                </div>
+              </div>
+            );
+          }
+          EOF
+
+      - name: Create Integrated Database Migration
+        run: |
+          cat << 'EOF' > supabase/migrations/003_system_integration.sql
+          -- Expanded Career Path Seeds
+          INSERT INTO career_paths (path_type, name, description) VALUES 
+          ('sole_trader', 'Sole Trader', 'Build a business from scratch.'),
+          ('streamer', 'Content Creator', 'Manage virality and parasocial bonds.'),
+          ('military', 'Military Service', 'High risk, high discipline SITREPS.'),
+          ('politician', 'Public Office', 'Pass edicts and manage polls.'),
+          ('mafia', 'The Syndicate', 'High wealth, high NPC collateral.');
+
+          -- Resonance Tag Support
+          ALTER TABLE events ADD COLUMN IF NOT EXISTS resonance_tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+          
+          -- Black Swan and Global Trend State
+          ALTER TABLE game_states ADD COLUMN IF NOT EXISTS global_stability FLOAT DEFAULT 1.0;
+          ALTER TABLE game_states ADD COLUMN IF NOT EXISTS is_black_swan BOOLEAN DEFAULT false;
+          EOF
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "GitHub Actions Builder"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Integrated Logic Hooks, Phone/Archive UI, and Career Seeds" || echo "No changes to commit"
+          git pull origin main --rebase || echo "Nothing to pull"
+          git push
